@@ -3,7 +3,12 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "MonShift - Time Tracking App",
   description: "Record working hours, breaks, and calculate overtime easily.",
-  manifest: "/manifest.webmanifest",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MonShift",
+  },
 };
 
 export default function RootLayout({
@@ -15,7 +20,7 @@ export default function RootLayout({
     <html lang="fr" dir="ltr">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-        <meta name="theme-color" content="#10b981" />
+        <meta name="theme-color" content="#1e3a8a" />
       </head>
       <body>
         {children}
