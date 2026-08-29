@@ -34,7 +34,7 @@ const texts: Record<string, any> = {
     totalPeriod: "Total Période",
     days: "jours",
     totalRevenue: "Revenu Total",
-    csvBtn: "📥 CSV",
+    csvBtn: "📥 Télécharger CSV",
     pdfBtn: "🖨️ Tableau PDF",
     shareBtn: "📤 Partager",
     previewTitle: "Aperçu du rapport",
@@ -42,10 +42,7 @@ const texts: Record<string, any> = {
     paid: "Payée",
     unpaid: "Non",
     closeWindow: "Fermer la fenêtre / Retour",
-    csvModalTitle: "Export CSV (Copier les données)",
-    copyBtn: "📋 Copier le CSV",
-    copied: "Copié !",
-    close: "Fermer"
+    csvSuccess: "Fichier CSV généré avec succès !"
   },
   en: {
     title: "Advanced Reports & Stats",
@@ -61,7 +58,7 @@ const texts: Record<string, any> = {
     totalPeriod: "Period Total",
     days: "days",
     totalRevenue: "Total Revenue",
-    csvBtn: "📥 CSV",
+    csvBtn: "📥 Download CSV",
     pdfBtn: "🖨️ PDF Table",
     shareBtn: "📤 Share",
     previewTitle: "Report Preview",
@@ -69,10 +66,7 @@ const texts: Record<string, any> = {
     paid: "Paid",
     unpaid: "Unpaid",
     closeWindow: "Close Window / Back",
-    csvModalTitle: "CSV Export (Copy Data)",
-    copyBtn: "📋 Copy CSV",
-    copied: "Copied!",
-    close: "Close"
+    csvSuccess: "CSV file generated successfully!"
   },
   ar: {
     title: "التقارير والإحصائيات المتقدمة",
@@ -88,7 +82,7 @@ const texts: Record<string, any> = {
     totalPeriod: "إجمالي الفترة",
     days: "أيام",
     totalRevenue: "إجمالي الدخل",
-    csvBtn: "📥 CSV",
+    csvBtn: "📥 تحميل ملف CSV",
     pdfBtn: "🖨️ جدول PDF",
     shareBtn: "📤 مشاركة",
     previewTitle: "معاينة التقرير",
@@ -96,10 +90,7 @@ const texts: Record<string, any> = {
     paid: "مدفوع",
     unpaid: "غير مدفوع",
     closeWindow: "إغلاق النافذة / العودة للتطبيق",
-    csvModalTitle: "تصدير CSV (نسخ البيانات)",
-    copyBtn: "📋 نسخ بيانات CSV",
-    copied: "تم النسخ!",
-    close: "إغلاق"
+    csvSuccess: "تم تجهيز ملف CSV بنجاح!"
   }
 };
 
@@ -116,11 +107,6 @@ export default function StatsPage() {
   const [includeMoney, setIncludeMoney] = useState(true);
   const [includeHours, setIncludeHours] = useState(true);
   const [includeJob, setIncludeJob] = useState(true);
-
-  // حالات خاصة بمودال الـ CSV المضمون 100%
-  const [csvText, setCsvText] = useState("");
-  const [showCsvModal, setShowCsvModal] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const savedSymbol = localStorage.getItem("monshift_symbol");
@@ -217,8 +203,8 @@ export default function StatsPage() {
 
   const totals = getTotalMetrics();
 
-  // الحل المضمون 100% لبيئة الموبايل وتطبيقات المتاجر
-  const handleExportCSV = () => {
+  // الحل النهائي لتنزيل ملف CSV حقيقي يتفتح تلقائياً في الإكسل ويوزع الأعمدة صح
+  const handleExportCSV = async () => {
     if (filteredRecords.length === 0) {
       alert(t.noData);
       return;
@@ -247,19 +233,33 @@ export default function StatsPage() {
       csvRows.push(row.join(","));
     });
 
-    const csvString = csvRows.join("\n");
-    setCsvText(csvString);
-    setShowCsvModal(true);
-  };
+    const csvString = "\uFEFF" + csvRows.join("\n"); // إضافة BOM لدعم الحروف العربية والفرنسية صح في Excel
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+    const file = new File([blob], `MonShift_Report_${startDate}_to_${endDate}.csv`, { type: "text/csv" });
 
-  const handleCopyCsvText = () => {
-    document.execCommand('copy'); // متوافق مع إطار الـ iFrame والموبايل
-    navigator.clipboard.writeText(csvText).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }).catch(() => {
-      alert("تم النسخ بنجاح");
-    });
+    // محاولة مشاركة الملف مباشرة إذا كان المدعم يدعم الملفات (ممتاز للتطبيقات والموبايل)
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: "MonShift Report CSV",
+          text: "Voici le rapport CSV généré par MonShift",
+        });
+        return;
+      } catch (err) {
+        // لو المستخدم ألغى المشاركة نكمل للتحميل العادي
+      }
+    }
+
+    // طريقة التحميل التقليدية كملف حقيقي
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `MonShift_Report_${startDate}_to_${endDate}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handlePrintPDF = () => {
@@ -481,34 +481,6 @@ export default function StatsPage() {
         </div>
 
       </div>
-
-      {/* نافذة عرض ونسخ بيانات CSV المضمونة 100% في التطبيق والمتاجر */}
-      {showCsvModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "16px" }}>
-          <div style={{ background: "white", width: "100%", maxWidth: "480px", borderRadius: "16px", padding: "20px", display: "flex", flexDirection: "column", maxHeight: "80vh" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: "bold", color: "#1e3a8a", marginBottom: "10px" }}>{t.csvModalTitle}</h3>
-            <textarea 
-              readOnly 
-              value={csvText} 
-              style={{ width: "100%", height: "200px", padding: "10px", fontSize: "12px", fontFamily: "monospace", border: "1px solid #d1d5db", borderRadius: "8px", resize: "none", marginBottom: "14px", background: "#f8fafc" }}
-            />
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button 
-                onClick={handleCopyCsvText}
-                style={{ flex: 1, background: copied ? "#059669" : "#2563eb", color: "white", border: "none", padding: "12px", borderRadius: "8px", fontWeight: "bold", fontSize: "14px", cursor: "pointer" }}
-              >
-                {copied ? t.copied : t.copyBtn}
-              </button>
-              <button 
-                onClick={() => setShowCsvModal(false)}
-                style={{ background: "#6b7280", color: "white", border: "none", padding: "12px 20px", borderRadius: "8px", fontWeight: "bold", fontSize: "14px", cursor: "pointer" }}
-              >
-                {t.close}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <BottomNav active="stats" />
     </main>
