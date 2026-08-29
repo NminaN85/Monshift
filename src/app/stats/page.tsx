@@ -43,7 +43,6 @@ export default function StatsPage() {
     const savedJobs = localStorage.getItem("monshift_jobs");
     if (savedJobs) setJobs(JSON.parse(savedJobs));
 
-    // افتراضياً نحدد الشهر الحالي
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
@@ -91,11 +90,11 @@ export default function StatsPage() {
     const job = jobs.find(j => j.id === day.jobId) || jobs[0];
     const rate = job ? job.rate : 0;
     const amount = hours * rate;
+    const formattedTime = `${Math.floor(netMins / 60)}h${String(netMins % 60).padStart(2, "0")}`;
 
-    return { netMins, amount, job };
+    return { netMins, formattedTime, amount, job };
   };
 
-  // فلترة السجلات حسب المدة المحددة
   const getFilteredRecords = () => {
     return Object.values(history).filter(day => {
       if (!startDate || !endDate) return true;
@@ -105,7 +104,6 @@ export default function StatsPage() {
 
   const filteredRecords = getFilteredRecords();
 
-  // حساب إجمالي النتائج للفلترة الحالية
   const getTotalMetrics = () => {
     let totalMins = 0;
     let totalAmount = 0;
@@ -123,7 +121,6 @@ export default function StatsPage() {
 
   const totals = getTotalMetrics();
 
-  // تصدير CSV
   const handleExportCSV = () => {
     if (filteredRecords.length === 0) {
       alert("Aucune donnée pour cette période.");
@@ -141,14 +138,13 @@ export default function StatsPage() {
 
     filteredRecords.forEach(day => {
       const metrics = calculateDayMetrics(day);
-      const hoursStr = `${Math.floor(metrics.netMins / 60)}h${String(metrics.netMins % 60).padStart(2, "0")}`;
       const breaksStr = day.breaks?.map(b => `${b.startTime}-${b.endTime}(${b.isPaid ? 'Payée' : 'Non payée'})`).join(" | ") || "Aucune";
 
       let row = [day.date];
       if (includeJob) row.push(`"${metrics.job.name}"`);
       if (includeTime) row.push(day.startTime, day.endTime);
       if (includeBreaks) row.push(`"${breaksStr}"`);
-      if (includeHours) row.push(hoursStr);
+      if (includeHours) row.push(metrics.formattedTime);
       if (includeMoney) row.push(metrics.amount.toFixed(2));
 
       csvContent += row.join(",") + "\r\n";
@@ -163,12 +159,10 @@ export default function StatsPage() {
     document.body.removeChild(link);
   };
 
-  // طباعة / PDF
   const handlePrintPDF = () => {
     window.print();
   };
 
-  // مشاركة عبر واتساب أو البريد
   const handleShareReport = () => {
     const reportText = `📊 Rapport MonShift (${startDate} au ${endDate}):\n- Jours: ${totals.daysCount}\n- Total Heures: ${totals.totalHours}\n- Total Montant: ${totals.totalAmount} €`;
     if (navigator.share) {
@@ -191,7 +185,6 @@ export default function StatsPage() {
 
       <div style={{ padding: "16px" }}>
         
-        {/* صندوق تحديد المدة المحددة */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "14px" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "10px" }}>📅 Sélectionner la période</div>
           <div style={{ display: "flex", gap: "10px" }}>
@@ -216,7 +209,6 @@ export default function StatsPage() {
           </div>
         </div>
 
-        {/* خيارات الفلترة والمحتوى المطلوب في التقرير */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "14px" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "8px" }}>⚙️ Éléments à inclure dans le rapport</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "13px", color: "#4b5563" }}>
@@ -238,7 +230,6 @@ export default function StatsPage() {
           </div>
         </div>
 
-        {/* ملخص النتائج للفترة */}
         <div style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)", color: "white", padding: "16px", borderRadius: "12px", marginBottom: "14px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
           <div>
             <div style={{ fontSize: "12px", opacity: 0.8 }}>Total Période ({totals.daysCount} jours)</div>
@@ -250,7 +241,6 @@ export default function StatsPage() {
           </div>
         </div>
 
-        {/* أزرار التصدير والمشاركة */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
           <button 
             onClick={handleExportCSV}
@@ -272,7 +262,6 @@ export default function StatsPage() {
           </button>
         </div>
 
-        {/* معاينة حية (Live Preview) للتقرير */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "10px", borderBottom: "1px solid #e5e7eb", paddingBottom: "8px" }}>
             👁️ Aperçu du rapport ({filteredRecords.length} entrées)
