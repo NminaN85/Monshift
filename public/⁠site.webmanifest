@@ -2,7 +2,7 @@
   "name": "MonShift - Suivi des heures",
   "short_name": "MonShift",
   "description": "Application de suivi des heures de travail et des gains",
-  "start_url": "/",
+  "start_url": "/?v=2",
   "display": "standalone",
   "background_color": "#f3f4f6",
   "theme_color": "#1e3a8a",
