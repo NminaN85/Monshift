@@ -29,7 +29,7 @@ const texts: Record<string, any> = {
     time: "Entrée/Sortie",
     breaks: "Pauses",
     hours: "Heures",
-    money: "Montants (€)",
+    money: "Montants",
     job: "Lieu de travail",
     totalPeriod: "Total Période",
     days: "jours",
@@ -51,7 +51,7 @@ const texts: Record<string, any> = {
     time: "Clock In/Out",
     breaks: "Breaks",
     hours: "Hours",
-    money: "Amount (€)",
+    money: "Amount",
     job: "Workplace",
     totalPeriod: "Period Total",
     days: "days",
@@ -73,7 +73,7 @@ const texts: Record<string, any> = {
     time: "وقت الحضور والانصراف",
     breaks: "الاستراحات (البوز)",
     hours: "عدد الساعات",
-    money: "المبالغ (€)",
+    money: "المبالغ",
     job: "مكان العمل",
     totalPeriod: "إجمالي الفترة",
     days: "أيام",
@@ -92,6 +92,7 @@ export default function StatsPage() {
   const [lang, setLang] = useState("fr");
   const [history, setHistory] = useState<Record<string, DayRecord>>({});
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [currencySymbol, setCurrencySymbol] = useState("€");
 
   // خيارات فلترة التقرير
   const [startDate, setStartDate] = useState("");
@@ -103,6 +104,11 @@ export default function StatsPage() {
   const [includeJob, setIncludeJob] = useState(true);
 
   useEffect(() => {
+    const savedSymbol = localStorage.getItem("monshift_symbol");
+    if (savedSymbol) {
+      setCurrencySymbol(savedSymbol);
+    }
+
     const savedLang = localStorage.getItem("monshift_lang");
     if (savedLang) setLang(savedLang);
 
@@ -203,7 +209,7 @@ export default function StatsPage() {
     if (includeTime) headers.push("Debut", "Fin");
     if (includeBreaks) headers.push("Pauses");
     if (includeHours) headers.push("Heures");
-    if (includeMoney) headers.push("Montant (EUR)");
+    if (includeMoney) headers.push(`Montant (${currencySymbol})`);
 
     let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
 
@@ -265,7 +271,7 @@ export default function StatsPage() {
                 ${includeTime ? `<th>${t.time}</th>` : ''}
                 ${includeBreaks ? `<th>${t.breaks}</th>` : ''}
                 ${includeHours ? `<th>${t.hours}</th>` : ''}
-                ${includeMoney ? `<th>${t.money}</th>` : ''}
+                ${includeMoney ? `<th>${t.money} (${currencySymbol})</th>` : ''}
               </tr>
             </thead>
             <tbody>
@@ -282,7 +288,7 @@ export default function StatsPage() {
           ${includeTime ? `<td>${day.startTime} - ${day.endTime}</td>` : ''}
           ${includeBreaks ? `<td>${breaksStr}</td>` : ''}
           ${includeHours ? `<td><b>${metrics.formattedTime}</b></td>` : ''}
-          ${includeMoney ? `<td><b>${metrics.amount.toFixed(2)} €</b></td>` : ''}
+          ${includeMoney ? `<td><b>${metrics.amount.toFixed(2)} ${currencySymbol}</b></td>` : ''}
         </tr>
       `;
     });
@@ -293,7 +299,7 @@ export default function StatsPage() {
           <div class="totals">
             <span>${t.days} : ${totals.daysCount}</span>
             <span>${t.hours} : ${totals.totalHours}</span>
-            <span>${t.totalRevenue} : ${totals.totalAmount} €</span>
+            <span>${t.totalRevenue} : ${totals.totalAmount} ${currencySymbol}</span>
           </div>
         </body>
       </html>
@@ -308,7 +314,7 @@ export default function StatsPage() {
   };
 
   const handleShareReport = () => {
-    const reportText = `📊 MonShift Report (${startDate} - ${endDate}):\n- ${t.days}: ${totals.daysCount}\n- ${t.hours}: ${totals.totalHours}\n- ${t.totalRevenue}: ${totals.totalAmount} €`;
+    const reportText = `📊 MonShift Report (${startDate} - ${endDate}):\n- ${t.days}: ${totals.daysCount}\n- ${t.hours}: ${totals.totalHours}\n- ${t.totalRevenue}: ${totals.totalAmount} ${currencySymbol}`;
     if (navigator.share) {
       navigator.share({
         title: 'MonShift Report',
@@ -368,7 +374,7 @@ export default function StatsPage() {
               <input type="checkbox" checked={includeHours} onChange={(e) => setIncludeHours(e.target.checked)} /> {t.hours}
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
-              <input type="checkbox" checked={includeMoney} onChange={(e) => setIncludeMoney(e.target.checked)} /> {t.money}
+              <input type="checkbox" checked={includeMoney} onChange={(e) => setIncludeMoney(e.target.checked)} /> {t.money} ({currencySymbol})
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
               <input type="checkbox" checked={includeJob} onChange={(e) => setIncludeJob(e.target.checked)} /> {t.job}
@@ -384,7 +390,7 @@ export default function StatsPage() {
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: "12px", opacity: 0.8 }}>{t.totalRevenue}</div>
-            <div style={{ fontSize: "22px", fontWeight: "bold" }}>{totals.totalAmount} €</div>
+            <div style={{ fontSize: "22px", fontWeight: "bold" }}>{totals.totalAmount} {currencySymbol}</div>
           </div>
         </div>
 
@@ -427,7 +433,7 @@ export default function StatsPage() {
                 <div key={day.date} style={{ borderBottom: "1px solid #f3f4f6", paddingBottom: "8px", marginBottom: "8px", fontSize: "13px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", color: "#1f2937" }}>
                     <span>📅 {day.date}</span>
-                    {includeMoney && <span style={{ color: "#0284c7" }}>{metrics.amount.toFixed(2)} €</span>}
+                    {includeMoney && <span style={{ color: "#0284c7" }}>{metrics.amount.toFixed(2)} {currencySymbol}</span>}
                   </div>
                   <div style={{ color: "#6b7280", fontSize: "12px", marginTop: "2px", display: "flex", flexWrap: "wrap", gap: "8px" }}>
                     {includeJob && <span style={{ color: "#7c3aed", fontWeight: "bold" }}>{metrics.job.name}</span>}
