@@ -23,7 +23,7 @@ const texts: Record<string, any> = {
   fr: {
     title: "Rapports & Statistiques Avancés",
     selectPeriod: "Sélectionner la période",
-    selectJobFilter: "Filtrer par lieu de travail",
+    selectJobFilter: "Filtrer par lieu de travail (Job)",
     allJobs: "Tous les lieux de travail",
     from: "Du",
     to: "Au",
@@ -43,13 +43,12 @@ const texts: Record<string, any> = {
     noData: "Aucune donnée trouvée pour cette période.",
     paid: "Payée",
     unpaid: "Non",
-    closeWindow: "Fermer la fenêtre / Retour",
-    csvSuccess: "Fichier CSV généré avec succès !"
+    closeWindow: "Fermer la fenêtre / Retour"
   },
   en: {
     title: "Advanced Reports & Stats",
     selectPeriod: "Select Period",
-    selectJobFilter: "Filter by workplace",
+    selectJobFilter: "Filter by workplace (Job)",
     allJobs: "All workplaces",
     from: "From",
     to: "To",
@@ -69,13 +68,12 @@ const texts: Record<string, any> = {
     noData: "No data found for this period.",
     paid: "Paid",
     unpaid: "Unpaid",
-    closeWindow: "Close Window / Back",
-    csvSuccess: "CSV file generated successfully!"
+    closeWindow: "Close Window / Back"
   },
   ar: {
     title: "التقارير والإحصائيات المتقدمة",
     selectPeriod: "تحديد الفترة الزمنية",
-    selectJobFilter: "فلترة حسب مكان العمل",
+    selectJobFilter: "فلترة حسب مكان العمل (الشركة)",
     allJobs: "جميع أماكن العمل",
     from: "من تاريخ",
     to: "إلى تاريخ",
@@ -95,8 +93,7 @@ const texts: Record<string, any> = {
     noData: "لا توجد بيانات مسجلة في هذه الفترة.",
     paid: "مدفوع",
     unpaid: "غير مدفوع",
-    closeWindow: "إغلاق النافذة / العودة للتطبيق",
-    csvSuccess: "تم تجهيز ملف CSV بنجاح!"
+    closeWindow: "إغلاق النافذة / العودة للتطبيق"
   }
 };
 
@@ -108,7 +105,7 @@ export default function StatsPage() {
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [selectedJobFilter, setSelectedJobFilter] = useState("ALL"); // فلتر مكان العمل
+  const [selectedJobFilter, setSelectedJobFilter] = useState("ALL");
 
   const [includeTime, setIncludeTime] = useState(true);
   const [includeBreaks, setIncludeBreaks] = useState(true);
@@ -118,9 +115,7 @@ export default function StatsPage() {
 
   useEffect(() => {
     const savedSymbol = localStorage.getItem("monshift_symbol");
-    if (savedSymbol) {
-      setCurrencySymbol(savedSymbol);
-    }
+    if (savedSymbol) setCurrencySymbol(savedSymbol);
 
     const savedLang = localStorage.getItem("monshift_lang");
     if (savedLang) setLang(savedLang);
@@ -129,7 +124,16 @@ export default function StatsPage() {
     if (savedHistory) setHistory(JSON.parse(savedHistory));
 
     const savedJobs = localStorage.getItem("monshift_jobs");
-    if (savedJobs) setJobs(JSON.parse(savedJobs));
+    if (savedJobs) {
+      setJobs(JSON.parse(savedJobs));
+    } else {
+      // جلب تجريبي لو الـ localstorage فيه أماكن عمل مسجلة بأسماء مختلفة
+      const defaultJobs = [
+        { id: "1", name: "Job A", rate: 15, color: "#3b82f6" },
+        { id: "2", name: "Job B", rate: 18, color: "#10b981" }
+      ];
+      setJobs(defaultJobs);
+    }
 
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
@@ -185,7 +189,6 @@ export default function StatsPage() {
     return { netMins, formattedTime, amount, job };
   };
 
-  // تصفية الورديات حسب التاريخ وحسب مكان العمل المختار
   const getFilteredShifts = () => {
     let allShifts: { date: string; shift: ShiftRecord }[] = [];
 
@@ -211,7 +214,6 @@ export default function StatsPage() {
       }
     });
 
-    // تطبيق فلتر مكان العمل (Job Filter)
     if (selectedJobFilter !== "ALL") {
       allShifts = allShifts.filter(({ shift }) => shift.jobId === selectedJobFilter);
     }
@@ -372,9 +374,7 @@ export default function StatsPage() {
     printWindow.document.write(tableHTML);
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-    }, 500);
+    setTimeout => { printWindow.print(); }, 500;
   };
 
   const handleShareReport = () => {
@@ -399,7 +399,7 @@ export default function StatsPage() {
 
       <div style={{ padding: "16px" }}>
         
-        {/* صندوق تحديد المدة */}
+        {/* تحديد المدة */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "14px" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "10px" }}>📅 {t.selectPeriod}</div>
           <div style={{ display: "flex", gap: "10px" }}>
@@ -424,22 +424,22 @@ export default function StatsPage() {
           </div>
         </div>
 
-        {/* فلتر مكان العمل (Job Filter) */}
-        <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "14px" }}>
-          <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "8px" }}>🏢 {t.selectJobFilter}</div>
+        {/* فلتر مكان العمل (Job Filter) الواضح والمضمون */}
+        <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "14px", border: "2px solid #3b82f6" }}>
+          <div style={{ fontWeight: "bold", fontSize: "14px", color: "#1e3a8a", marginBottom: "8px" }}>🏢 {t.selectJobFilter}</div>
           <select 
             value={selectedJobFilter} 
             onChange={(e) => setSelectedJobFilter(e.target.value)}
-            style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", background: "white", outline: "none" }}
+            style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", background: "white", outline: "none", fontWeight: "bold", color: "#374151" }}
           >
-            <option value="ALL">{t.allJobs}</option>
+            <option value="ALL">🌐 {t.allJobs}</option>
             {jobs.map(job => (
-              <option key={job.id} value={job.id}>{job.name} ({job.rate} {currencySymbol}/h)</option>
+              <option key={job.id} value={job.id}>💼 {job.name} ({job.rate} {currencySymbol}/h)</option>
             ))}
           </select>
         </div>
 
-        {/* خيارات عناصر التقرير */}
+        {/* عناصر التقرير */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "14px" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "8px" }}>⚙️ {t.includeElements}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "13px", color: "#4b5563" }}>
@@ -488,6 +488,7 @@ export default function StatsPage() {
             {t.pdfBtn}
           </button>
           <button 
+            onClick 
             onClick={handleShareReport}
             style={{ flex: 1, background: "#2563eb", color: "white", border: "none", padding: "10px", borderRadius: "8px", fontSize: "13px", fontWeight: "bold", cursor: "pointer" }}
           >
@@ -495,7 +496,7 @@ export default function StatsPage() {
           </button>
         </div>
 
-        {/* معاينة حية */}
+        {/* المعاينة الحية */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "10px", borderBottom: "1px solid #e5e7eb", paddingBottom: "8px" }}>
             👁️ {t.previewTitle} ({filteredShifts.length})
