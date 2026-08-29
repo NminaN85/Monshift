@@ -3,15 +3,22 @@
 import { useState, useEffect } from "react";
 import BottomNav from "@/components/BottomNav";
 
-interface BreakItem { duration: number; isPaid: boolean; }
+interface BreakItem { 
+  startTime: string; 
+  endTime: string; 
+  isPaid: boolean; 
+}
+
 interface DayRecord {
   date: string; // YYYY-MM-DD
   startTime: string;
   endTime: string;
   breaks: BreakItem[];
+  maxPaidMinutes?: number;
   notes: string;
   jobId?: string;
 }
+
 interface Job { id: string; name: string; rate: number; color: string; }
 
 const monthsData: Record<string, string[]> = {
@@ -47,16 +54,39 @@ export default function CalendarPage() {
   const monthsList = monthsData[lang] || monthsData["fr"];
   const t = uiTexts[lang] || uiTexts["fr"];
 
+  const timeToMins = (timeStr: string) => {
+    if (!timeStr) return 0;
+    const [h, m] = timeStr.split(":").map(Number);
+    return h * 60 + m;
+  };
+
   const calculateDayMetrics = (day: DayRecord) => {
-    const [startH, startM] = day.startTime.split(":").map(Number);
-    const [endH, endM] = day.endTime.split(":").map(Number);
-    let startMins = startH * 60 + startM;
-    let endMins = endH * 60 + endM;
+    let startMins = timeToMins(day.startTime);
+    let endMins = timeToMins(day.endTime);
     if (endMins <= startMins) endMins += 24 * 60;
 
     let grossMins = endMins - startMins;
-    let unpaidMins = 0;
-    day.breaks?.forEach(b => { if (!b.isPaid) unpaidMins += Number(b.duration || 0); });
+    let totalPaidBreakMins = 0;
+    let totalUnpaidBreakMins = 0;
+
+    day.breaks?.forEach(b => {
+      if (b.startTime && b.endTime) {
+        let bStart = timeToMins(b.startTime);
+        let bEnd = timeToMins(b.endTime);
+        if (bEnd <= bStart) bEnd += 24 * 60;
+        const duration = Math.max(0, bEnd - bStart);
+
+        if (!b.isPaid) {
+          totalUnpaidBreakMins += duration;
+        } else {
+          totalPaidBreakMins += duration;
+        }
+      }
+    });
+
+    const maxPaid = day.maxPaidMinutes !== undefined ? day.maxPaidMinutes : 30;
+    const excessPaidMins = Math.max(0, totalPaidBreakMins - maxPaid);
+    const unpaidMins = totalUnpaidBreakMins + excessPaidMins;
 
     const netMins = Math.max(0, grossMins - unpaidMins);
     const hours = netMins / 60;
@@ -191,6 +221,9 @@ export default function CalendarPage() {
               const dayName = dObj.toLocaleDateString(t.dateFormat, { weekday: 'short' });
               const dayNum = dObj.getDate();
 
+              // تجميع شكل عرض البوزات (من كذا إلى كذا) لكل بوز مسجل
+              const validBreaks = day.breaks?.filter(b => b.startTime && b.endTime) || [];
+
               return (
                 <div key={day.date} style={{ display: "flex", borderBottom: "1px solid #e5e7eb", background: "white", alignItems: "center", minHeight: "65px" }}>
                   <div style={{ width: "90px", padding: "10px", textAlign: "center", borderRight: lang !== "ar" ? "1px solid #e5e7eb" : "none", borderLeft: lang === "ar" ? "1px solid #e5e7eb" : "none" }}>
@@ -202,7 +235,14 @@ export default function CalendarPage() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderLeft: lang !== "ar" ? `4px solid ${metrics.job.color}` : "none", borderRight: lang === "ar" ? `4px solid ${metrics.job.color}` : "none", paddingLeft: lang !== "ar" ? "8px" : "0", paddingRight: lang === "ar" ? "8px" : "0" }}>
                       <div>
                         <div style={{ color: "#7c3aed", fontWeight: "bold", fontSize: "14px" }}>{metrics.job.name}</div>
-                        <div style={{ color: "#6b7280", fontSize: "12px" }}>🕒 {day.startTime} - {day.endTime} {day.breaks?.[0] ? `☕ ${day.breaks[0].duration}min` : ""}</div>
+                        <div style={{ color: "#6b7280", fontSize: "12px" }}>
+                          🕒 {day.startTime} - {day.endTime}
+                          {validBreaks.length > 0 && (
+                            <span style={{ marginLeft: "6px", color: "#d97706" }}>
+                              {validBreaks.map((b, idx) => `☕ ${b.startTime}-${b.endTime}`).join(" | ")}
+                            </span>
+                          )}
+                        </div>
                         <div style={{ color: "#374151", fontSize: "12px", fontWeight: "bold", marginTop: "2px" }}>{metrics.formattedTime}</div>
                       </div>
                       <div style={{ color: "#1f2937", fontWeight: "bold", fontSize: "15px" }}>{metrics.amount.toFixed(2)} €</div>
