@@ -8,14 +8,14 @@ interface BreakItem {
   endTime: string; 
   isPaid: boolean; 
 }
-interface DayRecord {
-  date: string;
+interface ShiftRecord {
+  id?: string;
+  jobId?: string;
   startTime: string;
   endTime: string;
   breaks: BreakItem[];
   maxPaidMinutes?: number;
   notes: string;
-  jobId?: string;
 }
 interface Job { id: string; name: string; rate: number; color: string; }
 
@@ -32,7 +32,7 @@ const texts: Record<string, any> = {
     money: "Montants",
     job: "Lieu de travail",
     totalPeriod: "Total Période",
-    days: "jours",
+    days: "jours / shifts",
     totalRevenue: "Revenu Total",
     csvBtn: "📥 Télécharger CSV",
     pdfBtn: "🖨️ Tableau PDF",
@@ -56,7 +56,7 @@ const texts: Record<string, any> = {
     money: "Amount",
     job: "Workplace",
     totalPeriod: "Period Total",
-    days: "days",
+    days: "days / shifts",
     totalRevenue: "Total Revenue",
     csvBtn: "📥 Download CSV",
     pdfBtn: "🖨️ PDF Table",
@@ -80,7 +80,7 @@ const texts: Record<string, any> = {
     money: "المبالغ",
     job: "مكان العمل",
     totalPeriod: "إجمالي الفترة",
-    days: "أيام",
+    days: "أيام / ورديات",
     totalRevenue: "إجمالي الدخل",
     csvBtn: "📥 تحميل ملف CSV",
     pdfBtn: "🖨️ جدول PDF",
@@ -96,7 +96,7 @@ const texts: Record<string, any> = {
 
 export default function StatsPage() {
   const [lang, setLang] = useState("fr");
-  const [history, setHistory] = useState<Record<string, DayRecord>>({});
+  const [history, setHistory] = useState<Record<string, any>>({});
   const [jobs, setJobs] = useState<Job[]>([]);
   const [currencySymbol, setCurrencySymbol] = useState("€");
 
@@ -138,16 +138,16 @@ export default function StatsPage() {
     return h * 60 + m;
   };
 
-  const calculateDayMetrics = (day: DayRecord) => {
-    let startMins = timeToMins(day.startTime);
-    let endMins = timeToMins(day.endTime);
+  const calculateShiftMetrics = (shift: ShiftRecord) => {
+    let startMins = timeToMins(shift.startTime);
+    let endMins = timeToMins(shift.endTime);
     if (endMins <= startMins) endMins += 24 * 60;
 
     let grossMins = endMins - startMins;
     let totalPaidBreakMins = 0;
     let totalUnpaidBreakMins = 0;
 
-    day.breaks?.forEach(b => {
+    shift.breaks?.forEach(b => {
       if (b.startTime && b.endTime) {
         let bStart = timeToMins(b.startTime);
         let bEnd = timeToMins(b.endTime);
@@ -162,14 +162,14 @@ export default function StatsPage() {
       }
     });
 
-    const maxPaid = day.maxPaidMinutes !== undefined ? day.maxPaidMinutes : 30;
+    const maxPaid = shift.maxPaidMinutes !== undefined ? shift.maxPaidMinutes : 30;
     const excessPaidMins = Math.max(0, totalPaidBreakMins - maxPaid);
     const unpaidMins = totalUnpaidBreakMins + excessPaidMins;
 
     const netMins = Math.max(0, grossMins - unpaidMins);
     const hours = netMins / 60;
 
-    const job = jobs.find(j => j.id === day.jobId) || jobs[0];
+    const job = jobs.find(j => j.id === shift.jobId) || jobs[0];
     const rate = job ? job.rate : 0;
     const amount = hours * rate;
     const formattedTime = `${Math.floor(netMins / 60)}h${String(netMins % 60).padStart(2, "0")}`;
@@ -177,35 +177,56 @@ export default function StatsPage() {
     return { netMins, formattedTime, amount, job };
   };
 
-  const getFilteredRecords = () => {
-    return Object.values(history).filter(day => {
-      if (!startDate || !endDate) return true;
-      return day.date >= startDate && day.date <= endDate;
-    }).sort((a, b) => a.date.localeCompare(b.date));
+  // تحويل وتحاهل التوافقية القديمة والجديدة لاستخراج كافة الورديات في الفترة المحددة
+  const getFilteredShifts = () => {
+    let allShifts: { date: string; shift: ShiftRecord }[] = [];
+
+    Object.entries(history).forEach(([dateKey, record]) => {
+      if (!startDate || !endDate || (dateKey >= startDate && dateKey <= endDate)) {
+        if (Array.isArray(record)) {
+          record.forEach(shift => {
+            allShifts.push({ date: dateKey, shift });
+          });
+        } else if (record && record.startTime) {
+          allShifts.push({
+            date: dateKey,
+            shift: {
+              jobId: record.jobId,
+              startTime: record.startTime,
+              endTime: record.endTime,
+              breaks: record.breaks || [],
+              maxPaidMinutes: record.maxPaidMinutes,
+              notes: record.notes || ""
+            }
+          });
+        }
+      }
+    });
+
+    return allShifts.sort((a, b) => a.date.localeCompare(b.date));
   };
 
-  const filteredRecords = getFilteredRecords();
+  const filteredShifts = getFilteredShifts();
 
   const getTotalMetrics = () => {
     let totalMins = 0;
     let totalAmount = 0;
-    filteredRecords.forEach(day => {
-      const m = calculateDayMetrics(day);
+    filteredShifts.forEach(({ shift }) => {
+      const m = calculateShiftMetrics(shift);
       totalMins += m.netMins;
       totalAmount += m.amount;
     });
     return {
       totalHours: `${Math.floor(totalMins / 60)}h${String(totalMins % 60).padStart(2, "0")}`,
       totalAmount: totalAmount.toFixed(2),
-      daysCount: filteredRecords.length
+      shiftsCount: filteredShifts.length
     };
   };
 
   const totals = getTotalMetrics();
 
-  // الحل النهائي لتنزيل ملف CSV حقيقي يتفتح تلقائياً في الإكسل ويوزع الأعمدة صح
   const handleExportCSV = async () => {
-    if (filteredRecords.length === 0) {
+    if (filteredShifts.length === 0) {
       alert(t.noData);
       return;
     }
@@ -219,13 +240,13 @@ export default function StatsPage() {
 
     let csvRows = [headers.join(",")];
 
-    filteredRecords.forEach(day => {
-      const metrics = calculateDayMetrics(day);
-      const breaksStr = day.breaks?.map(b => `${b.startTime}-${b.endTime}(${b.isPaid ? t.paid : t.unpaid})`).join(" | ") || "-";
+    filteredShifts.forEach(({ date, shift }) => {
+      const metrics = calculateShiftMetrics(shift);
+      const breaksStr = shift.breaks?.map(b => `${b.startTime}-${b.endTime}(${b.isPaid ? t.paid : t.unpaid})`).join(" | ") || "-";
 
-      let row = [day.date];
+      let row = [date];
       if (includeJob) row.push(`"${metrics.job.name}"`);
-      if (includeTime) row.push(day.startTime, day.endTime);
+      if (includeTime) row.push(shift.startTime, shift.endTime);
       if (includeBreaks) row.push(`"${breaksStr}"`);
       if (includeHours) row.push(metrics.formattedTime);
       if (includeMoney) row.push(metrics.amount.toFixed(2));
@@ -233,11 +254,10 @@ export default function StatsPage() {
       csvRows.push(row.join(","));
     });
 
-    const csvString = "\uFEFF" + csvRows.join("\n"); // إضافة BOM لدعم الحروف العربية والفرنسية صح في Excel
+    const csvString = "\uFEFF" + csvRows.join("\n");
     const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
     const file = new File([blob], `MonShift_Report_${startDate}_to_${endDate}.csv`, { type: "text/csv" });
 
-    // محاولة مشاركة الملف مباشرة إذا كان المدعم يدعم الملفات (ممتاز للتطبيقات والموبايل)
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({
@@ -246,12 +266,9 @@ export default function StatsPage() {
           text: "Voici le rapport CSV généré par MonShift",
         });
         return;
-      } catch (err) {
-        // لو المستخدم ألغى المشاركة نكمل للتحميل العادي
-      }
+      } catch (err) {}
     }
 
-    // طريقة التحميل التقليدية كملف حقيقي
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -263,7 +280,7 @@ export default function StatsPage() {
   };
 
   const handlePrintPDF = () => {
-    if (filteredRecords.length === 0) {
+    if (filteredShifts.length === 0) {
       alert(t.noData);
       return;
     }
@@ -311,15 +328,15 @@ export default function StatsPage() {
             <tbody>
     `;
 
-    filteredRecords.forEach(day => {
-      const metrics = calculateDayMetrics(day);
-      const breaksStr = day.breaks?.map(b => `${b.startTime}-${b.endTime} (${b.isPaid ? t.paid : t.unpaid})`).join("<br/>") || "-";
+    filteredShifts.forEach(({ date, shift }) => {
+      const metrics = calculateShiftMetrics(shift);
+      const breaksStr = shift.breaks?.map(b => `${b.startTime}-${b.endTime} (${b.isPaid ? t.paid : t.unpaid})`).join("<br/>") || "-";
 
       tableHTML += `
         <tr>
-          <td>${day.date}</td>
+          <td>${date}</td>
           ${includeJob ? `<td><b>${metrics.job.name}</b></td>` : ''}
-          ${includeTime ? `<td>${day.startTime} - ${day.endTime}</td>` : ''}
+          ${includeTime ? `<td>${shift.startTime} - ${shift.endTime}</td>` : ''}
           ${includeBreaks ? `<td>${breaksStr}</td>` : ''}
           ${includeHours ? `<td><b>${metrics.formattedTime}</b></td>` : ''}
           ${includeMoney ? `<td><b>${metrics.amount.toFixed(2)} ${currencySymbol}</b></td>` : ''}
@@ -331,7 +348,7 @@ export default function StatsPage() {
             </tbody>
           </table>
           <div class="totals">
-            <span>${t.days} : ${totals.daysCount}</span>
+            <span>Shifts : ${totals.shiftsCount}</span>
             <span>${t.hours} : ${totals.totalHours}</span>
             <span>${t.totalRevenue} : ${totals.totalAmount} ${currencySymbol}</span>
           </div>
@@ -348,7 +365,7 @@ export default function StatsPage() {
   };
 
   const handleShareReport = () => {
-    const reportText = `📊 MonShift Report (${startDate} - ${endDate}):\n- ${t.days}: ${totals.daysCount}\n- ${t.hours}: ${totals.totalHours}\n- ${t.totalRevenue}: ${totals.totalAmount} ${currencySymbol}`;
+    const reportText = `📊 MonShift Report (${startDate} - ${endDate}):\n- Shifts: ${totals.shiftsCount}\n- ${t.hours}: ${totals.totalHours}\n- ${t.totalRevenue}: ${totals.totalAmount} ${currencySymbol}`;
     if (navigator.share) {
       navigator.share({
         title: 'MonShift Report',
@@ -416,7 +433,7 @@ export default function StatsPage() {
 
         <div style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)", color: "white", padding: "16px", borderRadius: "12px", marginBottom: "14px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
           <div>
-            <div style={{ fontSize: "12px", opacity: 0.8 }}>{t.totalPeriod} ({totals.daysCount} {t.days})</div>
+            <div style={{ fontSize: "12px", opacity: 0.8 }}>{t.totalPeriod} ({totals.shiftsCount} shifts)</div>
             <div style={{ fontSize: "22px", fontWeight: "bold" }}>{totals.totalHours}</div>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -448,25 +465,25 @@ export default function StatsPage() {
 
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "10px", borderBottom: "1px solid #e5e7eb", paddingBottom: "8px" }}>
-            👁️ {t.previewTitle} ({filteredRecords.length})
+            👁️ {t.previewTitle} ({filteredShifts.length})
           </div>
 
-          {filteredRecords.length === 0 ? (
+          {filteredShifts.length === 0 ? (
             <div style={{ color: "#9ca3af", textAlign: "center", padding: "20px", fontSize: "13px" }}>{t.noData}</div>
           ) : (
-            filteredRecords.map((day) => {
-              const metrics = calculateDayMetrics(day);
-              const validBreaks = day.breaks?.filter(b => b.startTime && b.endTime) || [];
+            filteredShifts.map(({ date, shift }, index) => {
+              const metrics = calculateShiftMetrics(shift);
+              const validBreaks = shift.breaks?.filter(b => b.startTime && b.endTime) || [];
 
               return (
-                <div key={day.date} style={{ borderBottom: "1px solid #f3f4f6", paddingBottom: "8px", marginBottom: "8px", fontSize: "13px" }}>
+                <div key={index} style={{ borderBottom: "1px solid #f3f4f6", paddingBottom: "8px", marginBottom: "8px", fontSize: "13px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", color: "#1f2937" }}>
-                    <span>📅 {day.date}</span>
+                    <span>📅 {date}</span>
                     {includeMoney && <span style={{ color: "#0284c7" }}>{metrics.amount.toFixed(2)} {currencySymbol}</span>}
                   </div>
                   <div style={{ color: "#6b7280", fontSize: "12px", marginTop: "2px", display: "flex", flexWrap: "wrap", gap: "8px" }}>
                     {includeJob && <span style={{ color: "#7c3aed", fontWeight: "bold" }}>{metrics.job.name}</span>}
-                    {includeTime && <span>🕒 {day.startTime} - {day.endTime}</span>}
+                    {includeTime && <span>🕒 {shift.startTime} - {shift.endTime}</span>}
                     {includeBreaks && validBreaks.length > 0 && (
                       <span style={{ color: "#d97706" }}>
                         {validBreaks.map(b => `☕ ${b.startTime}-${b.endTime} (${b.isPaid ? t.paid : t.unpaid})`).join(" | ")}
