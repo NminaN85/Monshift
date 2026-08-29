@@ -213,7 +213,7 @@ export default function StatsPage() {
     if (includeHours) headers.push("Heures");
     if (includeMoney) headers.push(`Montant (${currencySymbol})`);
 
-    let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
+    let csvRows = [headers.join(",")];
 
     filteredRecords.forEach(day => {
       const metrics = calculateDayMetrics(day);
@@ -226,16 +226,21 @@ export default function StatsPage() {
       if (includeHours) row.push(metrics.formattedTime);
       if (includeMoney) row.push(metrics.amount.toFixed(2));
 
-      csvContent += row.join(",") + "\r\n";
+      csvRows.push(row.join(","));
     });
 
-    const encodedUri = encodeURI(csvContent);
+    const csvString = csvRows.join("\n");
+    // استخدام Blob للطريقة الآمنة والحديثة لتنزيل الملفات
+    const blob = new Blob(["\uFEFF" + csvString], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.href = url;
     link.setAttribute("download", `monshift_report_${startDate}_to_${endDate}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handlePrintPDF = () => {
