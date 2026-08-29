@@ -103,17 +103,24 @@ export default function JobsPage() {
                 <button onClick={() => setStep(3)} style={{ width: "100%", padding: "14px", background: "#1e3a8a", color: "white", border: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "15px" }}>{t.next}</button>
               </div>
             )}
+            // ... (في نفس المكان بتاع الخطوة التالتة)
             {step === 3 && (
-              <div style={{ display: "flex", flexDirection: "column", minHeight: "220px" }}>
-                <h3 style={{ fontSize: "16px", marginBottom: "10px" }}>{t.step3Title}</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "10px", marginBottom: "20px" }}>
-                  {COLORS.map((c) => (
-                    <button key={c} onClick={() => setColor(c)} style={{ width: "100%", height: "35px", background: c, border: color === c ? "3px solid #000" : "none", borderRadius: "8px", cursor: "pointer" }} />
-                  ))}
+              // عدّل الـ div ده بالكامل ليأخذ مساحة كاملة ويجبر الزرار للأسفل
+              <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, justifyContent: "space-between", minHeight: "350px" }}>
+                <div>
+                  <h3 style={{ fontSize: "16px", marginBottom: "10px" }}>{t.step3Title}</h3>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "10px", marginBottom: "20px" }}>
+                    {COLORS.map((c) => (
+                      <button key={c} onClick={() => setColor(c)} style={{ width: "100%", height: "35px", background: c, border: color === c ? "3px solid #000" : "none", borderRadius: "8px", cursor: "pointer" }} />
+                    ))}
+                  </div>
                 </div>
-                <button onClick={saveJob} style={{ width: "100%", padding: "14px", background: "#1e3a8a", color: "white", border: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "15px", marginTop: "auto" }}>{t.create}</button>
+                {/* الزرار ده هيفضل ثابت تحت خالص بسبب الـ space-between */}
+                <button onClick={saveJob} style={{ width: "100%", padding: "14px", background: "#1e3a8a", color: "white", border: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "15px", marginTop: "20px" }}>{t.create}</button>
               </div>
             )}
+// ...
+
           </div>
         </div>
       )}
