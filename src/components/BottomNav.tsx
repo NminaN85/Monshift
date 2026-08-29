@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react";
 
 const navTexts: Record<string, { hours: string; jobs: string; calendar: string; settings: string }> = {
-  fr: { hours: "Heures", jobs: "Emplois", calendar: "Calendrier", settings: "Paramètres" },
-  en: { hours: "Hours", jobs: "Jobs", calendar: "Calendar", settings: "Settings" },
-  ar: { hours: "الساعات", jobs: "الأماكن", calendar: "التقويم", settings: "الإعدادات" },
+  fr: { hours: "Heures", jobs: "Emplois", calendar: "Calendrier", settings: "Paramètres" , stats: "Statistiques"},
+  en: { hours: "Hours", jobs: "Jobs", calendar: "Calendar", settings: "Settings", stats: "statstics" },
+  ar: { hours: "الساعات", jobs: "الأماكن", calendar: "التقويم", settings: "الإعدادات" , stats: "الاحصائيات"},
 };
 
-export default function BottomNav({ active }: { active: "hours" | "jobs" | "calendar" | "settings" }) {
+export default function BottomNav({ active }: { active: "hours" | "jobs" | "calendar" | "settings" | "stats" }) {
   const [lang, setLang] = useState("fr");
 
   useEffect(() => {
