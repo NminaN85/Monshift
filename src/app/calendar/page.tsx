@@ -29,7 +29,7 @@ const uiTexts: Record<string, any> = {
 export default function CalendarPage() {
   const [lang, setLang] = useState("fr");
   const [currentYear, setCurrentYear] = useState(2026);
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null); // 0 to 11
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [history, setHistory] = useState<Record<string, DayRecord>>({});
   const [jobs, setJobs] = useState<Job[]>([]);
 
@@ -47,7 +47,6 @@ export default function CalendarPage() {
   const monthsList = monthsData[lang] || monthsData["fr"];
   const t = uiTexts[lang] || uiTexts["fr"];
 
-  // حساب الساعات والمبلغ لأي يوم
   const calculateDayMetrics = (day: DayRecord) => {
     const [startH, startM] = day.startTime.split(":").map(Number);
     const [endH, endM] = day.endTime.split(":").map(Number);
@@ -70,7 +69,6 @@ export default function CalendarPage() {
     return { netMins, formattedTime, amount, job };
   };
 
-  // تجميع البيانات للعام بالكامل أو لشهر معين
   const getMonthStats = (year: number, monthIndex: number) => {
     let totalMins = 0;
     let totalAmount = 0;
@@ -83,7 +81,7 @@ export default function CalendarPage() {
         totalMins += metrics.netMins;
         totalAmount += metrics.amount;
 
-        const jobId = metrics.jobId || metrics.job?.id || "default";
+        const jobId = day.jobId || metrics.job?.id || "default";
         const jobName = metrics.job?.name || "Job";
         const jobColor = metrics.job?.color || "#3b82f6";
 
@@ -118,7 +116,6 @@ export default function CalendarPage() {
   return (
     <main style={{ maxWidth: "480px", margin: "0 auto", paddingBottom: "90px", fontFamily: "sans-serif", background: "#f3f4f6", minHeight: "100vh", direction: lang === "ar" ? "rtl" : "ltr" }}>
       
-      {/* رأس الصفحة (Header) */}
       <header style={{ background: "#1e3a8a", color: "white", padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         {selectedMonth !== null ? (
           <button onClick={() => setSelectedMonth(null)} style={{ background: "transparent", border: "none", color: "white", fontSize: "20px", cursor: "pointer" }}>❮</button>
@@ -137,12 +134,10 @@ export default function CalendarPage() {
         )}
       </header>
 
-      {/* عرض الأشهر (إذا لم يتم اختيار شهر) */}
       {selectedMonth === null ? (
         <div>
           {monthsList.map((monthName, index) => {
             const stats = getMonthStats(currentYear, index);
-            hasData: stats.totalMins > 0;
 
             return (
               <div 
@@ -175,10 +170,8 @@ export default function CalendarPage() {
           })}
         </div>
       ) : (
-        /* عرض تفاصيل الأيام داخل الشهر المحدد */
         <div>
           {(() => {
-            // استخراج أيام الشهر المحدد فقط مرتبة
             const daysInMonth = Object.values(history).filter(day => {
               const d = new Date(day.date);
               return d.getFullYear() === currentYear && d.getMonth() === selectedMonth;
@@ -187,7 +180,7 @@ export default function CalendarPage() {
             if (daysInMonth.length === 0) {
               return (
                 <div style={{ textAlign: "center", padding: "40px", color: "#6b7280", background: "white", margin: "16px", borderRadius: "8px" }}>
-                  لا توجد مسجلات في هذا الشهر.
+                  لا توجد أيام مسجلة في هذا الشهر.
                 </div>
               );
             }
@@ -222,7 +215,6 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* شريط الإجمالي السفلي الثابت */}
       <div style={{ position: "fixed", bottom: "60px", left: 0, right: 0, maxWidth: "480px", margin: "0 auto", background: "#1e3a8a", color: "white", padding: "12px", textAlign: "center", boxShadow: "0 -2px 10px rgba(0,0,0,0.1)" }}>
         <div style={{ fontSize: "12px", color: "#93c5fd" }}>{selectedMonth !== null ? `${t.totalMonth} ${monthsList[selectedMonth]} ${currentYear}` : `Total ${currentYear}`}</div>
         <div style={{ fontSize: "16px", fontWeight: "bold" }}>
