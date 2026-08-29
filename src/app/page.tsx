@@ -8,7 +8,6 @@ interface BreakItem {
   startTime: string; 
   endTime: string; 
   isPaid: boolean;
-  paidLimitMinutes: number; 
 }
 
 interface DayRecord {
@@ -16,6 +15,7 @@ interface DayRecord {
   startTime: string;
   endTime: string;
   breaks: BreakItem[];
+  maxPaidMinutes: number;
   notes: string;
   jobId?: string;
 }
@@ -32,8 +32,9 @@ export default function HeuresPage() {
   const [startTime, setStartTime] = useState("07:00");
   const [endTime, setEndTime] = useState("15:00");
   const [breaks, setBreaks] = useState<BreakItem[]>([
-    { id: "1", startTime: "", endTime: "", isPaid: false, paidLimitMinutes: 30 }
+    { id: "1", startTime: "", endTime: "", isPaid: false }
   ]);
+  const [maxPaidMinutes, setMaxPaidMinutes] = useState<number>(30); // الحد الأقصى الإجمالي للاستراحة المدفوعة للشفت كله
   const [notes, setNotes] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJobId, setSelectedJobId] = useState("");
@@ -62,6 +63,7 @@ export default function HeuresPage() {
         setStartTime(day.startTime || "07:00");
         setEndTime(day.endTime || "15:00");
         setBreaks(day.breaks || []);
+        if (day.maxPaidMinutes !== undefined) setMaxPaidMinutes(day.maxPaidMinutes);
         setNotes(day.notes || "");
         if (day.jobId) setSelectedJobId(day.jobId);
       }
@@ -78,6 +80,7 @@ export default function HeuresPage() {
         setStartTime(day.startTime || "07:00");
         setEndTime(day.endTime || "15:00");
         setBreaks(day.breaks || []);
+        if (day.maxPaidMinutes !== undefined) setMaxPaidMinutes(day.maxPaidMinutes);
         setNotes(day.notes || "");
         if (day.jobId) setSelectedJobId(day.jobId);
         return;
@@ -85,7 +88,8 @@ export default function HeuresPage() {
     }
     setStartTime("07:00");
     setEndTime("15:00");
-    setBreaks([{ id: "1", startTime: "", endTime: "", isPaid: false, paidLimitMinutes: 30 }]);
+    setBreaks([{ id: "1", startTime: "", endTime: "", isPaid: false }]);
+    setMaxPaidMinutes(30);
     setNotes("");
   };
 
@@ -97,6 +101,7 @@ export default function HeuresPage() {
       startTime,
       endTime,
       breaks,
+      maxPaidMinutes,
       notes,
       jobId: selectedJobId
     };
@@ -112,30 +117,37 @@ export default function HeuresPage() {
     return h * 60 + m;
   };
 
+  // حساب دقيق يعتمد على إجمالي الاستراحات المدفوعة ومقارنتها بالحد الأقصى الإجمالي
   const calculateMetrics = () => {
     let startMins = timeToMins(startTime);
     let endMins = timeToMins(endTime);
     if (endMins <= startMins) endMins += 24 * 60;
 
     let grossMins = endMins - startMins;
-    let unpaidMins = 0;
+    
+    let totalPaidBreakMins = 0;
+    let totalUnpaidBreakMins = 0;
 
     breaks.forEach(b => {
       if (b.startTime && b.endTime) {
         let bStart = timeToMins(b.startTime);
         let bEnd = timeToMins(b.endTime);
         if (bEnd <= bStart) bEnd += 24 * 60;
-        const totalBreakDuration = Math.max(0, bEnd - bStart);
+        const duration = Math.max(0, bEnd - bStart);
 
         if (!b.isPaid) {
-          unpaidMins += totalBreakDuration;
+          totalUnpaidBreakMins += duration; // البوز غير المدفوع يُخصم بالكامل فوراً
         } else {
-          const allowedPaid = Number(b.paidLimitMinutes || 0);
-          const excess = Math.max(0, totalBreakDuration - allowedPaid);
-          unpaidMins += excess;
+          totalPaidBreakMins += duration; // تجميع إجمالي البوزات المدفوعة
         }
       }
     });
+
+    // حساب الزيادة في البوزات المدفوعة عن الحد الأقصى الإجمالي المسموح للشفت
+    const excessPaidMins = Math.max(0, totalPaidBreakMins - Number(maxPaidMinutes || 0));
+
+    // إجمالي الدقائق المستقطعة = البوزات غير المدفوعة أصلاً + الفائض عن الحد الأقصى للبوزات المدفوعة
+    const unpaidMins = totalUnpaidBreakMins + excessPaidMins;
 
     const netMins = Math.max(0, grossMins - unpaidMins);
     const hours = netMins / 60;
@@ -145,7 +157,7 @@ export default function HeuresPage() {
     const amount = hours * rate;
 
     const formattedTime = `${Math.floor(netMins / 60)}h${String(netMins % 60).padStart(2, "0")}`;
-    return { formattedTime, amount: amount.toFixed(2), currentJob };
+    return { formattedTime, amount: amount.toFixed(2) };
   };
 
   const metrics = calculateMetrics();
@@ -208,7 +220,7 @@ export default function HeuresPage() {
             <span style={{ fontWeight: "bold", fontSize: "14px", color: "#374151" }}>☕ Pauses (max 2)</span>
             {breaks.length < 2 && (
               <button 
-                onClick={() => setBreaks([...breaks, { id: Date.now().toString(), startTime: "", endTime: "", isPaid: false, paidLimitMinutes: 30 }])}
+                onClick={() => setBreaks([...breaks, { id: Date.now().toString(), startTime: "", endTime: "", isPaid: false }])}
                 style={{ background: "#10b981", color: "white", border: "none", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer" }}
               >
                 + Ajouter une pause
@@ -254,7 +266,7 @@ export default function HeuresPage() {
                 </div>
               </div>
               
-              <div style={{ marginTop: "8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ marginTop: "6px" }}>
                 <label style={{ fontSize: "13px", display: "flex", alignItems: "center", gap: "4px", color: "#374151", cursor: "pointer" }}>
                   <input 
                     type="checkbox" 
@@ -266,24 +278,20 @@ export default function HeuresPage() {
                   />
                   Pause payée
                 </label>
-
-                {b.isPaid && (
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                    <span style={{ fontSize: "11px", color: "#6b7280" }}>Max (min):</span>
-                    <input 
-                      type="number" 
-                      value={b.paidLimitMinutes} 
-                      onChange={(e) => {
-                        const val = Number(e.target.value);
-                        setBreaks(breaks.map(item => item.id === b.id ? { ...item, paidLimitMinutes: val } : item));
-                      }}
-                      style={{ width: "55px", padding: "4px", borderRadius: "4px", border: "1px solid #d1d5db", fontSize: "13px", textAlign: "center" }}
-                    />
-                  </div>
-                )}
               </div>
             </div>
           ))}
+
+          {/* حقل الحد الأقصى الإجمالي للدقائق المدفوعة لكل البوزات */}
+          <div style={{ marginTop: "12px", borderTop: "1px solid #e5e7eb", paddingTop: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "13px", color: "#4b5563", fontWeight: "bold" }}>Max pauses payées (Total min):</span>
+            <input 
+              type="number" 
+              value={maxPaidMinutes} 
+              onChange={(e) => setMaxPaidMinutes(Number(e.target.value))}
+              style={{ width: "70px", padding: "6px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", textAlign: "center" }}
+            />
+          </div>
         </div>
 
         <div style={{ background: "white", padding: "12px", borderRadius: "8px", marginBottom: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
