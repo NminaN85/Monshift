@@ -40,7 +40,8 @@ const texts: Record<string, any> = {
     previewTitle: "Aperçu du rapport",
     noData: "Aucune donnée trouvée pour cette période.",
     paid: "Payée",
-    unpaid: "Non"
+    unpaid: "Non",
+    closeWindow: "Fermer la fenêtre / Retour"
   },
   en: {
     title: "Advanced Reports & Stats",
@@ -62,7 +63,8 @@ const texts: Record<string, any> = {
     previewTitle: "Report Preview",
     noData: "No data found for this period.",
     paid: "Paid",
-    unpaid: "Unpaid"
+    unpaid: "Unpaid",
+    closeWindow: "Close Window / Back"
   },
   ar: {
     title: "التقارير والإحصائيات المتقدمة",
@@ -84,7 +86,8 @@ const texts: Record<string, any> = {
     previewTitle: "معاينة التقرير",
     noData: "لا توجد بيانات مسجلة في هذه الفترة.",
     paid: "مدفوع",
-    unpaid: "غير مدفوع"
+    unpaid: "غير مدفوع",
+    closeWindow: "إغلاق النافذة / العودة للتطبيق"
   }
 };
 
@@ -94,7 +97,6 @@ export default function StatsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [currencySymbol, setCurrencySymbol] = useState("€");
 
-  // خيارات فلترة التقرير
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [includeTime, setIncludeTime] = useState(true);
@@ -251,6 +253,8 @@ export default function StatsPage() {
           <title>MonShift Report</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 20px; color: #333; direction: ${lang === 'ar' ? 'rtl' : 'ltr'}; }
+            .no-print { text-align: center; margin-bottom: 20px; }
+            .close-btn { background: #dc2626; color: white; border: none; padding: 10px 20px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; }
             h2 { color: #1e3a8a; text-align: center; margin-bottom: 5px; }
             .subtitle { text-align: center; font-size: 14px; color: #666; margin-bottom: 20px; }
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -258,9 +262,15 @@ export default function StatsPage() {
             th { background-color: #1e3a8a; color: white; }
             tr:nth-child(even) { background-color: #f8fafc; }
             .totals { margin-top: 20px; font-size: 15px; font-weight: bold; background: #f1f5f9; padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; }
+            @media print {
+              .no-print { display: none; }
+            }
           </style>
         </head>
         <body>
+          <div class="no-print">
+            <button class="close-btn" onclick="window.close()">${t.closeWindow}</button>
+          </div>
           <h2>MonShift - Report</h2>
           <div class="subtitle">${t.from} : ${startDate} | ${t.to} : ${endDate}</div>
           <table>
