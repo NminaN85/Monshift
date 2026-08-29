@@ -38,7 +38,7 @@ export default function Home() {
   const result = calculateWorkDay({
     startTime,
     endTime,
-    breaks: [{ startTime: breakStart, endTime: breakEnd }],
+    breaks: breakStart ? [{ startTime: breakStart, endTime: breakEnd }] : [],
     targetDailyHours: 7,
   });
 
