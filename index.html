@@ -1,182 +1,39 @@
-<!DOCTYPE html>
+<!doctype html>
+
 <html lang="fr">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta charset="utf-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
   <meta name="theme-color" content="#111827">
 
+  <meta name="description" content="MonShift - suivi des heures de travail">
+
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+
+  <link rel="stylesheet" href="css/style.css">
+
   <title>MonShift</title>
 
-  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-  <div class="app">
+<div class="app-shell">
 
-    <!-- HEADER -->
-    <header class="header">
-      <div>
-        <h1>MonShift</h1>
-        <p id="todayDate"></p>
-      </div>
+  <header class="topbar">
 
-      <button class="icon-btn" id="themeBtn">
-        🌙
-      </button>
-    </header>
+    <div>
 
+      <h1>MonShift</h1>
 
-    <!-- TODAY CARD -->
-    <section class="today-card">
+      <p id="headerDate"></p>
 
-      <span class="small-title">
-        MA JOURNÉE
-      </span>
+    </div>
 
-      <div class="worked-time" id="workedTime">
-        00h00
-      </div>
-
-      <p>Temps travaillé</p>
-
-    </section>
-
-
-    <!-- TIMES -->
-    <section class="times-card">
-
-      <div class="time-row">
-        <div class="time-info">
-          <span class="time-icon">🟢</span>
-
-          <div>
-            <strong>Entrée</strong>
-            <small>Début du travail</small>
-          </div>
-        </div>
-
-        <strong id="entryTime">--:--</strong>
-      </div>
-
-
-      <div class="time-row">
-        <div class="time-info">
-          <span class="time-icon">🟡</span>
-
-          <div>
-            <strong>Début pause</strong>
-            <small>Début de la pause</small>
-          </div>
-        </div>
-
-        <strong id="breakStartTime">--:--</strong>
-      </div>
-
-
-      <div class="time-row">
-        <div class="time-info">
-          <span class="time-icon">🔵</span>
-
-          <div>
-            <strong>Fin pause</strong>
-            <small>Retour au travail</small>
-          </div>
-        </div>
-
-        <strong id="breakEndTime">--:--</strong>
-      </div>
-
-
-      <div class="time-row">
-        <div class="time-info">
-          <span class="time-icon">🔴</span>
-
-          <div>
-            <strong>Sortie</strong>
-            <small>Fin du travail</small>
-          </div>
-        </div>
-
-        <strong id="exitTime">--:--</strong>
-      </div>
-
-    </section>
-
-
-    <!-- ACTIONS -->
-    <section class="actions">
-
-      <button class="action-btn start" id="entryBtn">
-        🟢 ENTRÉE
-      </button>
-
-      <button class="action-btn pause" id="breakStartBtn">
-        🟡 DÉBUT PAUSE
-      </button>
-
-      <button class="action-btn resume" id="breakEndBtn">
-        🔵 FIN PAUSE
-      </button>
-
-      <button class="action-btn end" id="exitBtn">
-        🔴 SORTIE
-      </button>
-
-    </section>
-
-
-    <!-- SUMMARY -->
-    <section class="summary-card">
-
-      <div>
-        <span>Aujourd'hui</span>
-        <strong id="todayTotal">00h00</strong>
-      </div>
-
-      <div>
-        <span>Cette semaine</span>
-        <strong id="weekTotal">00h00</strong>
-      </div>
-
-      <div>
-        <span>Ce mois</span>
-        <strong id="monthTotal">00h00</strong>
-      </div>
-
-    </section>
-
-
-    <!-- NAVIGATION -->
-    <nav class="bottom-nav">
-
-      <button class="nav-item active">
-        🏠
-        <span>Accueil</span>
-      </button>
-
-      <button class="nav-item" id="calendarBtn">
-        📅
-        <span>Calendrier</span>
-      </button>
-
-      <button class="nav-item">
-        📊
-        <span>Stats</span>
-      </button>
-
-      <button class="nav-item">
-        ⚙️
-        <span>Paramètres</span>
-      </button>
-
-    </nav>
-
-  </div>
-
-
-  <script src="app.js"></script>
-
-</body>
-</html>
+    <button class="icon-
