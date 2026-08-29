@@ -8,14 +8,14 @@ interface BreakItem {
   endTime: string; 
   isPaid: boolean; 
 }
-interface DayRecord {
-  date: string;
+interface ShiftRecord {
+  id: string;
+  jobId: string;
   startTime: string;
   endTime: string;
   breaks: BreakItem[];
   maxPaidMinutes?: number;
   notes: string;
-  jobId?: string;
 }
 interface Job { id: string; name: string; rate: number; color: string; }
 
@@ -25,42 +25,24 @@ const monthsData: Record<string, string[]> = {
   ar: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
 };
 
-// قاموس الترجمات للصفحة
 const translations: Record<string, any> = {
-  fr: {
-    edit: "Modifier",
-    delete: "Supprimer",
-    week: "Semaine",
-    total: "Total"
-  },
-  en: {
-    edit: "Edit",
-    delete: "Delete",
-    week: "Week",
-    total: "Total"
-  },
-  ar: {
-    edit: "تعديل",
-    delete: "حذف",
-    week: "أسبوع",
-    total: "الإجمالي"
-  }
+  fr: { edit: "Modifier", delete: "Supprimer", week: "Semaine", total: "Total" },
+  en: { edit: "Edit", delete: "Delete", week: "Week", total: "Total" },
+  ar: { edit: "تعديل", delete: "حذف", week: "أسبوع", total: "الإجمالي" }
 };
 
 export default function CalendarPage() {
   const [lang, setLang] = useState("fr");
   const [currentYear, setCurrentYear] = useState(2026);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
-  const [history, setHistory] = useState<Record<string, DayRecord>>({});
+  const [history, setHistory] = useState<Record<string, ShiftRecord[] | any>>({});
   const [jobs, setJobs] = useState<Job[]>([]);
   const [startDayOption, setStartDayOption] = useState("Lundi");
   const [currencySymbol, setCurrencySymbol] = useState("€");
 
   useEffect(() => {
     const savedSymbol = localStorage.getItem("monshift_symbol");
-    if (savedSymbol) {
-      setCurrencySymbol(savedSymbol);
-    }
+    if (savedSymbol) setCurrencySymbol(savedSymbol);
 
     const savedLang = localStorage.getItem("monshift_lang");
     if (savedLang) setLang(savedLang);
@@ -85,38 +67,34 @@ export default function CalendarPage() {
     return h * 60 + m;
   };
 
-  const calculateDayMetrics = (day: DayRecord) => {
-    let startMins = timeToMins(day.startTime);
-    let endMins = timeToMins(day.endTime);
+  const calculateShiftMetrics = (shift: ShiftRecord) => {
+    let startMins = timeToMins(shift.startTime);
+    let endMins = timeToMins(shift.endTime);
     if (endMins <= startMins) endMins += 24 * 60;
 
     let grossMins = endMins - startMins;
     let totalPaidBreakMins = 0;
     let totalUnpaidBreakMins = 0;
 
-    day.breaks?.forEach(b => {
+    shift.breaks?.forEach(b => {
       if (b.startTime && b.endTime) {
         let bStart = timeToMins(b.startTime);
         let bEnd = timeToMins(b.endTime);
         if (bEnd <= bStart) bEnd += 24 * 60;
         const duration = Math.max(0, bEnd - bStart);
-
-        if (!b.isPaid) {
-          totalUnpaidBreakMins += duration;
-        } else {
-          totalPaidBreakMins += duration;
-        }
+        if (!b.isPaid) totalUnpaidBreakMins += duration;
+        else totalPaidBreakMins += duration;
       }
     });
 
-    const maxPaid = day.maxPaidMinutes !== undefined ? day.maxPaidMinutes : 30;
+    const maxPaid = shift.maxPaidMinutes !== undefined ? shift.maxPaidMinutes : 30;
     const excessPaidMins = Math.max(0, totalPaidBreakMins - maxPaid);
     const unpaidMins = totalUnpaidBreakMins + excessPaidMins;
 
     const netMins = Math.max(0, grossMins - unpaidMins);
     const hours = netMins / 60;
 
-    const job = jobs.find(j => j.id === day.jobId) || jobs[0];
+    const job = jobs.find(j => j.id === shift.jobId) || jobs[0];
     const rate = job ? job.rate : 0;
     const amount = hours * rate;
 
@@ -127,9 +105,26 @@ export default function CalendarPage() {
     return { netMins, formattedTime, amount, job };
   };
 
+  const getDayShiftsList = (record: any): ShiftRecord[] => {
+    if (!record) return [];
+    if (Array.isArray(record)) return record;
+    if (record.startTime) {
+      return [{
+        id: "legacy",
+        jobId: record.jobId || (jobs[0]?.id ?? ""),
+        startTime: record.startTime,
+        endTime: record.endTime,
+        breaks: record.breaks || [],
+        maxPaidMinutes: record.maxPaidMinutes ?? 30,
+        notes: record.notes || ""
+      }];
+    }
+    return [];
+  };
+
   const getWeekNumber = (date: Date) => {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    let shiftDays = 1; // Lundi
+    let shiftDays = 1;
     if (startDayOption === "Dimanche") shiftDays = 0;
     if (startDayOption === "Samedi") shiftDays = 6;
 
@@ -157,7 +152,7 @@ export default function CalendarPage() {
         dayNumber: date.getDate(),
         dayOfWeek: date.toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'fr-FR', { weekday: 'short' }),
         weekNumber: weekNo,
-        record: history[dateKey] || null
+        shifts: getDayShiftsList(history[dateKey])
       });
       date.setDate(date.getDate() + 1);
     }
@@ -170,11 +165,11 @@ export default function CalendarPage() {
     const days = getDaysInMonthFull(year, monthIndex);
     
     days.forEach(d => {
-      if (d.record) {
-        const metrics = calculateDayMetrics(d.record);
+      d.shifts.forEach(shift => {
+        const metrics = calculateShiftMetrics(shift);
         totalMins += metrics.netMins;
         totalAmount += metrics.amount;
-      }
+      });
     });
 
     const hPart = Math.floor(totalMins / 60);
@@ -184,7 +179,6 @@ export default function CalendarPage() {
     return { totalMins, formattedTotalTime, totalAmount };
   };
 
-  // دالة حذف سجل اليوم
   const handleDeleteDay = (dateKey: string) => {
     const updatedHistory = { ...history };
     delete updatedHistory[dateKey];
@@ -192,10 +186,9 @@ export default function CalendarPage() {
     localStorage.setItem("monshift_history", JSON.stringify(updatedHistory));
   };
 
-  // دالة تعديل اليوم (تخزين التاريخ المعين ثم الانتقال لصفحة الساعات)
   const handleEditDay = (dateKey: string) => {
     localStorage.setItem("monshift_edit_date", dateKey);
-    window.location.href = "/"; // بالافتراض أن الصفحة الرئيسية أو مسار الساعات هو الجذر أو /hours (يمكنك ضبطه حسب مسارك)
+    window.location.href = "/";
   };
 
   return (
@@ -253,11 +246,11 @@ export default function CalendarPage() {
               let weekMins = 0;
               let weekAmount = 0;
               weekDays.forEach(d => {
-                if (d.record) {
-                  const m = calculateDayMetrics(d.record);
+                d.shifts.forEach(shift => {
+                  const m = calculateShiftMetrics(shift);
                   weekMins += m.netMins;
                   weekAmount += m.amount;
-                }
+                });
               });
               const whPart = Math.floor(weekMins / 60);
               const wmPart = String(weekMins % 60).padStart(2, "0");
@@ -274,54 +267,61 @@ export default function CalendarPage() {
                   </div>
 
                   {weekDays.map(d => {
-                    const hasRecord = d.record !== null;
-                    const metrics = hasRecord ? calculateDayMetrics(d.record!) : null;
-                    const validBreaks = d.record?.breaks?.filter(b => b.startTime && b.endTime) || [];
+                    const hasShifts = d.shifts.length > 0;
 
                     return (
-                      <div key={d.dateKey} style={{ display: "flex", background: "white", borderBottom: "1px solid #e5e7eb", minHeight: "65px", alignItems: "center" }}>
-                        <div style={{ width: "90px", padding: "10px", textAlign: "center", borderInlineEnd: "1px solid #e5e7eb" }}>
+                      <div key={d.dateKey} style={{ display: "flex", background: "white", borderBottom: "1px solid #e5e7eb", alignItems: "stretch" }}>
+                        <div style={{ width: "90px", padding: "10px", textAlign: "center", borderInlineEnd: "1px solid #e5e7eb", display: "flex", flexDirection: "column", justifyContent: "center" }}>
                           <div style={{ fontSize: "11px", color: "#6b7280", textTransform: "capitalize" }}>{d.dayOfWeek}</div>
-                          <div style={{ fontSize: "18px", fontWeight: "bold", color: hasRecord ? "#1e3a8a" : "#9ca3af" }}>{d.dayNumber}</div>
+                          <div style={{ fontSize: "18px", fontWeight: "bold", color: hasShifts ? "#1e3a8a" : "#9ca3af" }}>{d.dayNumber}</div>
                           <div style={{ fontSize: "10px", color: "#9ca3af" }}>{monthsList[selectedMonth]}</div>
                         </div>
 
-                        <div style={{ flex: 1, padding: "10px 14px" }}>
-                          {hasRecord && metrics ? (
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderInlineStart: "4px solid " + metrics.job.color, paddingInlineStart: "8px" }}>
-                              <div>
-                                <div style={{ color: "#7c3aed", fontWeight: "bold", fontSize: "14px" }}>{metrics.job.name}</div>
-                                <div style={{ color: "#6b7280", fontSize: "12px" }}>
-                                  🕒 {d.record!.startTime + " - " + d.record!.endTime}
-                                  {validBreaks.length > 0 && (
-                                    <span style={{ marginInlineStart: "6px", color: "#d97706" }}>
-                                      {validBreaks.map(b => "☕ " + b.startTime + "-" + b.endTime).join(" | ")}
-                                    </span>
-                                  )}
-                                </div>
-                                <div style={{ color: "#374151", fontSize: "12px", fontWeight: "bold", marginTop: "2px" }}>{metrics.formattedTime}</div>
-                              </div>
+                        <div style={{ flex: 1, padding: "8px 12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                          {hasShifts ? (
+                            d.shifts.map((shift, sIdx) => {
+                              const metrics = calculateShiftMetrics(shift);
+                              const validBreaks = shift.breaks?.filter(b => b.startTime && b.endTime) || [];
 
-                              <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
-                                <div style={{ color: "#1f2937", fontWeight: "bold", fontSize: "15px" }}>{metrics.amount.toFixed(2) + " " + currencySymbol}</div>
-                                <div style={{ display: "flex", gap: "8px" }}>
-                                  <button 
-                                    onClick={() => handleEditDay(d.dateKey)} 
-                                    style={{ background: "#3b82f6", color: "white", border: "none", padding: "2px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer", fontWeight: "bold" }}
-                                  >
-                                    {t.edit}
-                                  </button>
-                                  <button 
-                                    onClick={() => handleDeleteDay(d.dateKey)} 
-                                    style={{ background: "#ef4444", color: "white", border: "none", padding: "2px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer", fontWeight: "bold" }}
-                                  >
-                                    {t.delete}
-                                  </button>
+                              return (
+                                <div key={shift.id || sIdx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderInlineStart: "4px solid " + metrics.job.color, paddingInlineStart: "8px", background: "#f8fafc", padding: "6px", borderRadius: "6px" }}>
+                                  <div>
+                                    <div style={{ color: "#7c3aed", fontWeight: "bold", fontSize: "13px" }}>{metrics.job.name}</div>
+                                    <div style={{ color: "#6b7280", fontSize: "11px" }}>
+                                      🕒 {shift.startTime} - {shift.endTime}
+                                      {validBreaks.length > 0 && (
+                                        <span style={{ marginInlineStart: "4px", color: "#d97706" }}>
+                                          {validBreaks.map(b => "☕ " + b.startTime + "-" + b.endTime).join(" | ")}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div style={{ color: "#374151", fontSize: "11px", fontWeight: "bold", marginTop: "2px" }}>{metrics.formattedTime}</div>
+                                  </div>
+
+                                  <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+                                    <div style={{ color: "#1f2937", fontWeight: "bold", fontSize: "14px" }}>{metrics.amount.toFixed(2) + " " + currencySymbol}</div>
+                                    <div style={{ display: "flex", gap: "6px" }}>
+                                      <button 
+                                        onClick={() => handleEditDay(d.dateKey)} 
+                                        style={{ background: "#3b82f6", color: "white", border: "none", padding: "2px 6px", borderRadius: "4px", fontSize: "10px", cursor: "pointer", fontWeight: "bold" }}
+                                      >
+                                        {t.edit}
+                                      </button>
+                                      {sIdx === 0 && (
+                                        <button 
+                                          onClick={() => handleDeleteDay(d.dateKey)} 
+                                          style={{ background: "#ef4444", color: "white", border: "none", padding: "2px 6px", borderRadius: "4px", fontSize: "10px", cursor: "pointer", fontWeight: "bold" }}
+                                        >
+                                          {t.delete}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
+                              );
+                            })
                           ) : (
-                            <div style={{ color: "#d1d5db", fontSize: "13px" }}>-</div>
+                            <div style={{ color: "#d1d5db", fontSize: "13px", display: "flex", alignItems: "center", height: "100%" }}>-</div>
                           )}
                         </div>
                       </div>
