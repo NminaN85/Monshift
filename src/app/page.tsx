@@ -1,5 +1,7 @@
 "use client";
 
+
+
 import { useState, useEffect } from "react";
 import BottomNav from "@/components/BottomNav";
 
