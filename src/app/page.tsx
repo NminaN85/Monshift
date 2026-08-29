@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { calculateWorkDay } from "@/lib/calculations";
 
 export default function Home() {
@@ -10,6 +10,26 @@ export default function Home() {
   const [breakEnd, setBreakEnd] = useState<string | null>(null);
   const [endTime, setEndTime] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+
+  // استرجاع البيانات المحفوظة عند فتح التطبيق أول مرة
+  useEffect(() => {
+    const savedData = localStorage.getItem("monshift_current_day");
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
+      setStatus(parsed.status || "NOT_STARTED");
+      setStartTime(parsed.startTime || null);
+      setBreakStart(parsed.breakStart || null);
+      setBreakEnd(parsed.breakEnd || null);
+      setEndTime(parsed.endTime || null);
+      setNotes(parsed.notes || "");
+    }
+  }, []);
+
+  // حفظ البيانات تلقائياً في المتصفح كلما تغيرت
+  useEffect(() => {
+    const dataToSave = { status, startTime, breakStart, breakEnd, endTime, notes };
+    localStorage.setItem("monshift_current_day", JSON.stringify(dataToSave));
+  }, [status, startTime, breakStart, breakEnd, endTime, notes]);
 
   const currentTimeStr = () => {
     const now = new Date();
@@ -23,23 +43,38 @@ export default function Home() {
     targetDailyHours: 7,
   });
 
+  const resetDay = () => {
+    localStorage.removeItem("monshift_current_day");
+    setStatus("NOT_STARTED");
+    setStartTime(null);
+    setBreakStart(null);
+    setBreakEnd(null);
+    setEndTime(null);
+    setNotes("");
+  };
+
   return (
     <main style={{ maxWidth: "480px", margin: "0 auto", padding: "16px", fontFamily: "sans-serif", paddingBottom: "80px" }}>
-      {/* الترويسة */}
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
         <h1 style={{ fontSize: "22px", fontWeight: "bold", color: "#111827" }}>MonShift ⏱️</h1>
-        <span style={{ fontSize: "13px", background: "#d1fae5", color: "#065f46", padding: "4px 10px", borderRadius: "12px", fontWeight: "600" }}>
-          {status === "NOT_STARTED" && "جاهز"}
-          {status === "WORKING" && "🟢 يعمل الآن"}
-          {status === "ON_BREAK" && "🟡 في استراحة"}
-          {status === "FINISHED" && "🔴 انتهى اليوم"}
-        </span>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <span style={{ fontSize: "13px", background: "#d1fae5", color: "#065f46", padding: "4px 10px", borderRadius: "12px", fontWeight: "600" }}>
+            {status === "NOT_STARTED" && "جاهز"}
+            {status === "WORKING" && "🟢 يعمل"}
+            {status === "ON_BREAK" && "🟡 استراحة"}
+            {status === "FINISHED" && "🔴 انتهى"}
+          </span>
+          {status === "FINISHED" && (
+            <button onClick={resetDay} style={{ fontSize: "11px", background: "#fee2e2", color: "#991b1b", border: "none", padding: "4px 8px", borderRadius: "6px", cursor: "pointer" }}>
+              إعادة ضبط
+            </button>
+          )}
+        </div>
       </header>
 
-      {/* لوحة الإحصائيات اليومية */}
       <section style={{ background: "#ffffff", padding: "16px", borderRadius: "14px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)", marginBottom: "16px", border: "1px solid #e5e7eb" }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "14px" }}>
-          <span style={{ color: "#6b7280" }}>ساعات العمل المحسوبة:</span>
+          <span style={{ color: "#6b7280" }}>ساعات العمل:</span>
           <strong style={{ color: "#059669", fontSize: "16px" }}>{result.formattedNet}</strong>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "14px" }}>
@@ -47,19 +82,17 @@ export default function Home() {
           <span style={{ fontWeight: "600" }}>07h00</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px" }}>
-          <span style={{ color: "#6b7280" }}>الوقت الإضافي (Overtime):</span>
+          <span style={{ color: "#6b7280" }}>الوقت الإضافي:</span>
           <strong style={{ color: "#2563eb", fontSize: "16px" }}>{result.formattedOvertime}</strong>
         </div>
       </section>
 
-      {/* الأوقات المسجلة تفصيلياً */}
       <section style={{ background: "#f9fafb", padding: "12px", borderRadius: "10px", marginBottom: "16px", fontSize: "13px", color: "#374151" }}>
         <div>🚀 بداية العمل: <strong>{startTime || "--:--"}</strong></div>
         <div>☕ الاستراحة: <strong>{breakStart || "--:--"} {breakEnd ? `→ ${breakEnd}` : ""}</strong></div>
         <div>🏁 نهاية العمل: <strong>{endTime || "--:--"}</strong></div>
       </section>
 
-      {/* أزرار التحكم السريعة */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
         <button
           onClick={() => { setStartTime(currentTimeStr()); setStatus("WORKING"); }}
@@ -94,7 +127,6 @@ export default function Home() {
         </button>
       </div>
 
-      {/* ملاحظات اليوم */}
       <div style={{ marginBottom: "20px" }}>
         <input
           type="text"
@@ -105,10 +137,9 @@ export default function Home() {
         />
       </div>
 
-      {/* شريط التنقل السفلي الثابت */}
       <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "white", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "space-around", padding: "10px 0", boxShadow: "0 -2px 5px rgba(0,0,0,0.05)" }}>
         <a href="/" style={{ textDecoration: "none", color: "#10b981", fontSize: "13px", fontWeight: "bold" }}>🏠 الرئيسية</a>
-        <a href="#" style={{ textDecoration: "none", color: "#9ca3af", fontSize: "13px" }}>📅 التقويم</a>
+        <a href="/calendar" style={{ textDecoration: "none", color: "#9ca3af", fontSize: "13px" }}>📅 التقويم</a>
         <a href="#" style={{ textDecoration: "none", color: "#9ca3af", fontSize: "13px" }}>📊 الإحصائيات</a>
         <a href="#" style={{ textDecoration: "none", color: "#9ca3af", fontSize: "13px" }}>⚙️ الإعدادات</a>
       </nav>
