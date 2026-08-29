@@ -11,6 +11,7 @@ interface BreakItem {
   isPaid: boolean;
 }
 
+
 interface ShiftRecord {
   id: string;
   jobId: string;
