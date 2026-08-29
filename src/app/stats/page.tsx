@@ -65,6 +65,7 @@ export default function StatsPage() {
   const [history, setHistory] = useState<Record<string, DayRecord>>({});
   const [jobs, setJobs] = useState<Job[]>([]);
   const [chartType, setChartType] = useState<"amount" | "hours">("amount");
+  const [activeTooltip, setActiveTooltip] = useState<number | null>(null);
 
   useEffect(() => {
     const savedLang = localStorage.getItem("monshift_lang");
@@ -193,6 +194,7 @@ export default function StatsPage() {
           </div>
         </div>
 
+        {/* قسم الرسم البياني مع التلميح التفاعلي (Tooltip) */}
         <div style={{ background: "white", padding: "16px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "16px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
             <div style={{ fontWeight: "bold", fontSize: "15px", color: "#374151" }}>{t.monthlyEvolution}</div>
@@ -212,14 +214,34 @@ export default function StatsPage() {
             </div>
           </div>
 
-          <div style={{ height: "160px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "4px", paddingTop: "15px", borderBottom: "1px solid #e5e7eb" }}>
+          <div style={{ height: "180px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "4px", paddingTop: "25px", borderBottom: "1px solid #e5e7eb", position: "relative" }}>
             {monthlyData.map((data, index) => {
               const val = chartType === "amount" ? data.amount : data.mins / 60;
               const heightPercent = maxVal > 0 ? (val / maxVal) * 100 : 0;
+              const isSelected = activeTooltip === index;
 
               return (
-                <div key={index} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end" }}>
-                  <div title={`${val.toFixed(1)}`} style={{ width: "100%", maxWidth: "18px", height: `${Math.max(heightPercent, 4)}%`, background: val > 0 ? "#3b82f6" : "#e5e7eb", borderTopLeftRadius: "4px", borderTopRightRadius: "4px", transition: "height 0.3s ease" }}></div>
+                <div 
+                  key={index} 
+                  onClick={() => setActiveTooltip(isSelected ? null : index)}
+                  style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end", cursor: "pointer", position: "relative" }}
+                >
+                  {/* صندوق القيمة الظاهر عند الضغط (Tooltip) */}
+                  {isSelected && (
+                    <div style={{ position: "absolute", bottom: `${Math.max(heightPercent, 15)}%`, background: "#1e3a8a", color: "white", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", whiteSpace: "nowrap", zIndex: 10, boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }}>
+                      {monthsShort[index]}: {chartType === "amount" ? `${val.toFixed(2)} €` : `${Math.floor(data.mins / 60)}h${String(data.mins % 60).padStart(2, "0")}`}
+                    </div>
+                  )}
+
+                  <div style={{ 
+                    width: "100%", 
+                    maxWidth: "18px", 
+                    height: `${Math.max(heightPercent, 4)}%`, 
+                    background: isSelected ? "#2563eb" : val > 0 ? "#3b82f6" : "#e5e7eb", 
+                    borderTopLeftRadius: "4px", 
+                    borderTopRightRadius: "4px", 
+                    transition: "all 0.2s ease" 
+                  }}></div>
                 </div>
               );
             })}
@@ -227,7 +249,7 @@ export default function StatsPage() {
 
           <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "8px" }}>
             {monthsShort.map((m, index) => (
-              <div key={index} style={{ flex: 1, textAlign: "center", fontSize: "9px", color: "#6b7280" }}>
+              <div key={index} style={{ flex: 1, textAlign: "center", fontSize: "9px", color: activeTooltip === index ? "#1e3a8a" : "#6b7280", fontWeight: activeTooltip === index ? "bold" : "normal" }}>
                 {m}
               </div>
             ))}
