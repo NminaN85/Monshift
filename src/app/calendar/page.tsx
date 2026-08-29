@@ -97,13 +97,23 @@ export default function CalendarPage() {
     return { netMins, formattedTime, amount, job };
   };
 
+  // دالة دقيقة لحساب رقم الأسبوع الفعلي في السنة بناءً على يوم بداية الأسبوع
+  const getWeekNumber = (date: Date) => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    let shiftDays = 1; // Lundi
+    if (startDayOption === "Dimanche") shiftDays = 0;
+    if (startDayOption === "Samedi") shiftDays = 6;
+
+    const dayNum = d.getUTCDay();
+    const adjustedDay = (dayNum - shiftDays + 7) % 7;
+    d.setUTCDate(d.getUTCDate() + 4 - adjustedDay);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  };
+
   const getDaysInMonthFull = (year: number, monthIndex: number) => {
     const date = new Date(year, monthIndex, 1);
     const days = [];
-
-    let shiftDays = 1; 
-    if (startDayOption === "Dimanche") shiftDays = 0;
-    if (startDayOption === "Samedi") shiftDays = 6;
 
     while (date.getMonth() === monthIndex) {
       const yearStr = date.getFullYear();
@@ -111,9 +121,7 @@ export default function CalendarPage() {
       const dayStr = String(date.getDate()).padStart(2, '0');
       const dateKey = yearStr + "-" + monthStr + "-" + dayStr;
 
-      const firstDayOfMonth = new Date(year, monthIndex, 1);
-      const firstDayAdjusted = (firstDayOfMonth.getDay() - shiftDays + 7) % 7;
-      const weekNo = Math.floor((date.getDate() + firstDayAdjusted - 1) / 7) + 1;
+      const weekNo = getWeekNumber(new Date(date));
 
       days.push({
         dateKey,
