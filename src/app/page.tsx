@@ -73,12 +73,10 @@ const translations: Record<string, any> = {
 };
 
 export default function HeuresPage() {
-  const [selectedDate, setSelectedDate] = useState("2026-08-17");
-  const [startTime, setStartTime] = useState("07:00");
-  const [endTime, setEndTime] = useState("15:00");
-  const [breaks, setBreaks] = useState<BreakItem[]>([
-    { id: "1", startTime: "", endTime: "", isPaid: false }
-  ]);
+  const [selectedDate, setSelectedDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [breaks, setBreaks] = useState<BreakItem[]>([]);
   const [maxPaidMinutes, setMaxPaidMinutes] = useState<number>(30);
   const [notes, setNotes] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -107,20 +105,28 @@ export default function HeuresPage() {
       }
     }
 
+    // جلب تاريخ اليوم الفعلي بشكل ديناميكي
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+    setSelectedDate(todayStr);
+
     const savedHistory = localStorage.getItem("monshift_history");
     if (savedHistory) {
       const history = JSON.parse(savedHistory);
-      if (history[selectedDate]) {
-        const day = history[selectedDate];
-        setStartTime(day.startTime || "07:00");
-        setEndTime(day.endTime || "15:00");
-        setBreaks(day.breaks || []);
-        if (day.maxPaidMinutes !== undefined) setMaxPaidMinutes(day.maxPaidMinutes);
-        setNotes(day.notes || "");
-        if (day.jobId) setSelectedJobId(day.jobId);
+      if (history[todayStr]) {
+        const dayRecord = history[todayStr];
+        setStartTime(dayRecord.startTime || "");
+        setEndTime(dayRecord.endTime || "");
+        setBreaks(dayRecord.breaks || []);
+        if (dayRecord.maxPaidMinutes !== undefined) setMaxPaidMinutes(dayRecord.maxPaidMinutes);
+        setNotes(dayRecord.notes || "");
+        if (dayRecord.jobId) setSelectedJobId(dayRecord.jobId);
       }
     }
-  }, [selectedDate]);
+  }, []);
 
   const t = translations[lang] || translations.fr;
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
@@ -132,8 +138,8 @@ export default function HeuresPage() {
       const history = JSON.parse(savedHistory);
       if (history[newDate]) {
         const day = history[newDate];
-        setStartTime(day.startTime || "07:00");
-        setEndTime(day.endTime || "15:00");
+        setStartTime(day.startTime || "");
+        setEndTime(day.endTime || "");
         setBreaks(day.breaks || []);
         if (day.maxPaidMinutes !== undefined) setMaxPaidMinutes(day.maxPaidMinutes);
         setNotes(day.notes || "");
@@ -141,9 +147,10 @@ export default function HeuresPage() {
         return;
       }
     }
-    setStartTime("07:00");
-    setEndTime("15:00");
-    setBreaks([{ id: "1", startTime: "", endTime: "", isPaid: false }]);
+    // تصفير الحقول ليقوم المستخدم بملئها لليوم الجديد
+    setStartTime("");
+    setEndTime("");
+    setBreaks([]);
     setMaxPaidMinutes(30);
     setNotes("");
   };
@@ -173,6 +180,10 @@ export default function HeuresPage() {
   };
 
   const calculateMetrics = () => {
+    if (!startTime || !endTime) {
+      return { formattedTime: "0h00", amount: "0.00" };
+    }
+
     let startMins = timeToMins(startTime);
     let endMins = timeToMins(endTime);
     if (endMins <= startMins) endMins += 24 * 60;
@@ -221,7 +232,7 @@ export default function HeuresPage() {
           type="date" 
           value={selectedDate} 
           onChange={(e) => handleDateChange(e.target.value)}
-          style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "white", padding: "6px 12px", borderRadius: "6px", fontSize: "16px", fontWeight: "bold", textAlign: "center", marginBottom: "8px" }}
+          style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "white", padding: "6px 12px", borderRadius: "6px", fontSize: "16px", fontWeight: "bold", textAlign: "center", marginBottom: "8px", outline: "none", cursor: "pointer" }}
         />
         <div style={{ fontSize: "13px", color: "#93c5fd" }}>{t.totalGross}: {metrics.amount} {currencySymbol}</div>
         <div style={{ fontSize: "28px", fontWeight: "bold", marginTop: "4px" }}>{metrics.formattedTime}</div>
@@ -234,7 +245,7 @@ export default function HeuresPage() {
           <select 
             value={selectedJobId} 
             onChange={(e) => setSelectedJobId(e.target.value)}
-            style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "15px", background: "white" }}
+            style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "15px", background: "white", outline: "none" }}
           >
             {jobs.length === 0 ? (
               <option value="">{t.noJob}</option>
@@ -255,7 +266,7 @@ export default function HeuresPage() {
                 type="time" 
                 value={startTime} 
                 onChange={(e) => setStartTime(e.target.value)}
-                style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "16px", background: "#f0fdf4", textAlign: "center", fontWeight: "bold", color: "#166534" }}
+                style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "16px", background: "#f0fdf4", textAlign: "center", fontWeight: "bold", color: "#166534", outline: "none" }}
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -264,7 +275,7 @@ export default function HeuresPage() {
                 type="time" 
                 value={endTime} 
                 onChange={(e) => setEndTime(e.target.value)}
-                style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "16px", background: "#fef2f2", textAlign: "center", fontWeight: "bold", color: "#991b1b" }}
+                style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "16px", background: "#fef2f2", textAlign: "center", fontWeight: "bold", color: "#991b1b", outline: "none" }}
               />
             </div>
           </div>
@@ -276,7 +287,7 @@ export default function HeuresPage() {
             {breaks.length < 2 && (
               <button 
                 onClick={() => setBreaks([...breaks, { id: Date.now().toString(), startTime: "", endTime: "", isPaid: false }])}
-                style={{ background: "#10b981", color: "white", border: "none", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer" }}
+                style={{ background: "#10b981", color: "white", border: "none", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer", fontWeight: "bold" }}
               >
                 {t.addBreak}
               </button>
@@ -289,7 +300,7 @@ export default function HeuresPage() {
                 <span style={{ fontSize: "13px", fontWeight: "bold", color: "#4b5563" }}>{t.pauseN(index + 1)}</span>
                 <button 
                   onClick={() => setBreaks(breaks.filter(item => item.id !== b.id))}
-                  style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer" }}
+                  style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer", fontWeight: "bold" }}
                 >
                   {t.delete}
                 </button>
@@ -304,7 +315,7 @@ export default function HeuresPage() {
                       const val = e.target.value;
                       setBreaks(breaks.map(item => item.id === b.id ? { ...item, startTime: val } : item));
                     }}
-                    style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px" }}
+                    style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", outline: "none" }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -316,7 +327,7 @@ export default function HeuresPage() {
                       const val = e.target.value;
                       setBreaks(breaks.map(item => item.id === b.id ? { ...item, endTime: val } : item));
                     }}
-                    style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px" }}
+                    style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", outline: "none" }}
                   />
                 </div>
               </div>
@@ -330,6 +341,7 @@ export default function HeuresPage() {
                       const checked = e.target.checked;
                       setBreaks(breaks.map(item => item.id === b.id ? { ...item, isPaid: checked } : item));
                     }}
+                    style={{ cursor: "pointer" }}
                   />
                   {t.paidBreak}
                 </label>
@@ -343,7 +355,7 @@ export default function HeuresPage() {
               type="number" 
               value={maxPaidMinutes} 
               onChange={(e) => setMaxPaidMinutes(Number(e.target.value))}
-              style={{ width: "70px", padding: "6px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", textAlign: "center" }}
+              style={{ width: "70px", padding: "6px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", textAlign: "center", outline: "none" }}
             />
           </div>
         </div>
@@ -353,7 +365,7 @@ export default function HeuresPage() {
             value={notes} 
             onChange={(e) => setNotes(e.target.value)}
             placeholder={t.notePlaceholder}
-            style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", minHeight: "60px", resize: "none" }}
+            style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", minHeight: "60px", resize: "none", outline: "none" }}
           />
         </div>
 
