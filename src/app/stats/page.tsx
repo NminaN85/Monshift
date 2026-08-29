@@ -3,12 +3,17 @@
 import { useState, useEffect } from "react";
 import BottomNav from "@/components/BottomNav";
 
-interface BreakItem { duration: number; isPaid: boolean; }
+interface BreakItem { 
+  startTime: string; 
+  endTime: string; 
+  isPaid: boolean; 
+}
 interface DayRecord {
   date: string;
   startTime: string;
   endTime: string;
   breaks: BreakItem[];
+  maxPaidMinutes?: number;
   notes: string;
   jobId?: string;
 }
@@ -31,7 +36,8 @@ const texts: Record<string, any> = {
     jobBreakdown: "Répartition par Lieu de travail",
     noData: "Aucune donnée disponible pour cette année.",
     hoursLabel: "Heures",
-    daysUnit: "jours"
+    daysUnit: "jours",
+    exportBtn: "📄 Exporter les données (CSV)"
   },
   en: {
     statsTitle: "Statistics",
@@ -43,7 +49,8 @@ const texts: Record<string, any> = {
     jobBreakdown: "Job Breakdown",
     noData: "No data available for this year.",
     hoursLabel: "Hours",
-    daysUnit: "days"
+    daysUnit: "days",
+    exportBtn: "📄 Export Data (CSV)"
   },
   ar: {
     statsTitle: "الإحصائيات",
@@ -55,7 +62,8 @@ const texts: Record<string, any> = {
     jobBreakdown: "التوزيع حسب أماكن العمل",
     noData: "لا توجد بيانات متاحة لهذا العام.",
     hoursLabel: "ساعات",
-    daysUnit: "أيام"
+    daysUnit: "أيام",
+    exportBtn: "📄 تصدير البيانات (CSV)"
   }
 };
 
@@ -81,16 +89,39 @@ export default function StatsPage() {
   const t = texts[lang] || texts["fr"];
   const monthsShort = monthsData[lang] || monthsData["fr"];
 
+  const timeToMins = (timeStr: string) => {
+    if (!timeStr) return 0;
+    const [h, m] = timeStr.split(":").map(Number);
+    return h * 60 + m;
+  };
+
   const calculateDayMetrics = (day: DayRecord) => {
-    const [startH, startM] = day.startTime.split(":").map(Number);
-    const [endH, endM] = day.endTime.split(":").map(Number);
-    let startMins = startH * 60 + startM;
-    let endMins = endH * 60 + endM;
+    let startMins = timeToMins(day.startTime);
+    let endMins = timeToMins(day.endTime);
     if (endMins <= startMins) endMins += 24 * 60;
 
     let grossMins = endMins - startMins;
-    let unpaidMins = 0;
-    day.breaks?.forEach(b => { if (!b.isPaid) unpaidMins += Number(b.duration || 0); });
+    let totalPaidBreakMins = 0;
+    let totalUnpaidBreakMins = 0;
+
+    day.breaks?.forEach(b => {
+      if (b.startTime && b.endTime) {
+        let bStart = timeToMins(b.startTime);
+        let bEnd = timeToMins(b.endTime);
+        if (bEnd <= bStart) bEnd += 24 * 60;
+        const duration = Math.max(0, bEnd - bStart);
+
+        if (!b.isPaid) {
+          totalUnpaidBreakMins += duration;
+        } else {
+          totalPaidBreakMins += duration;
+        }
+      }
+    });
+
+    const maxPaid = day.maxPaidMinutes !== undefined ? day.maxPaidMinutes : 30;
+    const excessPaidMins = Math.max(0, totalPaidBreakMins - maxPaid);
+    const unpaidMins = totalUnpaidBreakMins + excessPaidMins;
 
     const netMins = Math.max(0, grossMins - unpaidMins);
     const hours = netMins / 60;
@@ -163,6 +194,40 @@ export default function StatsPage() {
   const stats = getYearStats();
   const totalJobAmount = stats.jobBreakdown.reduce((acc, j) => acc + j.amount, 0) || 1;
 
+  // وظيفة تصدير البيانات إلى ملف CSV
+  const handleExportCSV = () => {
+    const records = Object.values(history).filter(day => new Date(day.date).getFullYear() === currentYear);
+    if (records.length === 0) {
+      alert("Aucune donnée à exporter pour cette année.");
+      return;
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,Date,Job,Debut,Fin,Heures,Montant (EUR)\n";
+
+    records.forEach(day => {
+      const metrics = calculateDayMetrics(day);
+      const hoursStr = `${Math.floor(metrics.netMins / 60)}h${String(metrics.netMins % 60).padStart(2, "0")}`;
+      const row = [
+        day.date,
+        `"${metrics.job.name}"`,
+        day.startTime,
+        day.endTime,
+        hoursStr,
+        metrics.amount.toFixed(2)
+      ].join(",");
+
+      csvContent += row + "\r\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `monshift_report_${currentYear}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <main style={{ maxWidth: "480px", margin: "0 auto", paddingBottom: "90px", fontFamily: "sans-serif", background: "#f3f4f6", minHeight: "100vh", direction: lang === "ar" ? "rtl" : "ltr" }}>
       
@@ -174,6 +239,14 @@ export default function StatsPage() {
 
       <div style={{ padding: "16px" }}>
         
+        {/* زر التصدير (Export) */}
+        <button 
+          onClick={handleExportCSV}
+          style={{ width: "100%", background: "#059669", color: "white", border: "none", padding: "12px", borderRadius: "10px", fontSize: "15px", fontWeight: "bold", cursor: "pointer", marginBottom: "16px", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}
+        >
+          {t.exportBtn}
+        </button>
+
         <div style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)", color: "white", padding: "20px", borderRadius: "12px", marginBottom: "16px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
           <div style={{ fontSize: "13px", opacity: 0.8, marginBottom: "4px" }}>{t.totalYear}</div>
           <div style={{ fontSize: "32px", fontWeight: "bold", marginBottom: "12px" }}>{stats.totalAmount} €</div>
@@ -194,7 +267,6 @@ export default function StatsPage() {
           </div>
         </div>
 
-        {/* قسم الرسم البياني مع التلميح التفاعلي (Tooltip) */}
         <div style={{ background: "white", padding: "16px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "16px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
             <div style={{ fontWeight: "bold", fontSize: "15px", color: "#374151" }}>{t.monthlyEvolution}</div>
@@ -226,7 +298,6 @@ export default function StatsPage() {
                   onClick={() => setActiveTooltip(isSelected ? null : index)}
                   style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end", cursor: "pointer", position: "relative" }}
                 >
-                  {/* صندوق القيمة الظاهر عند الضغط (Tooltip) */}
                   {isSelected && (
                     <div style={{ position: "absolute", bottom: `${Math.max(heightPercent, 15)}%`, background: "#1e3a8a", color: "white", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", whiteSpace: "nowrap", zIndex: 10, boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }}>
                       {monthsShort[index]}: {chartType === "amount" ? `${val.toFixed(2)} €` : `${Math.floor(data.mins / 60)}h${String(data.mins % 60).padStart(2, "0")}`}
