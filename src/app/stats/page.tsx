@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useState, useEffect } from "react";
 import BottomNav from "@/components/BottomNav";
 
@@ -420,7 +419,7 @@ export default function StatsPage() {
           </div>
         </div>
 
-        {/* فلتر مكان العمل الواضح جداً */}
+        {/* فلتر مكان العمل الواضح */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "14px", border: "2px solid #3b82f6" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#1e3a8a", marginBottom: "8px" }}>🏢 {t.selectJobFilter}</div>
           <select 
@@ -498,7 +497,7 @@ export default function StatsPage() {
           </div>
 
           {filteredShifts.length === 0 ? (
-            <div style={{ color: "#9ca3af", textAlign: "center", padding: "20px", fontSize: "13px"}>{t.noData}</div>
+            <div style={{ color: "#9ca3af", textAlign: "center", padding: "20px", fontSize: "13px" }}>{t.noData}</div>
           ) : (
             filteredShifts.map(({ date, shift }, index) => {
               const metrics = calculateShiftMetrics(shift);
