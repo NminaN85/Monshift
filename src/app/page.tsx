@@ -34,25 +34,27 @@ export default function HeuresPage() {
   const [breaks, setBreaks] = useState<BreakItem[]>([
     { id: "1", startTime: "", endTime: "", isPaid: false }
   ]);
-  const [maxPaidMinutes, setMaxPaidMinutes] = useState<number>(30); // الحد الأقصى الإجمالي للاستراحة المدفوعة للشفت كله
+  const [maxPaidMinutes, setMaxPaidMinutes] = useState<number>(30);
   const [notes, setNotes] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJobId, setSelectedJobId] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [currencySymbol, setCurrencySymbol] = useState("€");
 
   useEffect(() => {
+    // جلب رمز العملة المختار من الإعدادات
+    const savedSymbol = localStorage.getItem("monshift_symbol");
+    if (savedSymbol) {
+      setCurrencySymbol(savedSymbol);
+    }
+
     const savedJobs = localStorage.getItem("monshift_jobs");
     if (savedJobs) {
       const parsedJobs: Job[] = JSON.parse(savedJobs);
       setJobs(parsedJobs);
-      if (parsedJobs.length > 0) {
+      if (parsedJobs.length > 0 && !selectedJobId) {
         setSelectedJobId(parsedJobs[0].id);
       }
-    } else {
-      const defaultJob: Job = { id: "1", name: "Mina", rate: 12.93, color: "#ec4899" };
-      setJobs([defaultJob]);
-      setSelectedJobId(defaultJob.id);
-      localStorage.setItem("monshift_jobs", JSON.stringify([defaultJob]));
     }
 
     const savedHistory = localStorage.getItem("monshift_history");
@@ -117,7 +119,6 @@ export default function HeuresPage() {
     return h * 60 + m;
   };
 
-  // حساب دقيق يعتمد على إجمالي الاستراحات المدفوعة ومقارنتها بالحد الأقصى الإجمالي
   const calculateMetrics = () => {
     let startMins = timeToMins(startTime);
     let endMins = timeToMins(endTime);
@@ -136,17 +137,14 @@ export default function HeuresPage() {
         const duration = Math.max(0, bEnd - bStart);
 
         if (!b.isPaid) {
-          totalUnpaidBreakMins += duration; // البوز غير المدفوع يُخصم بالكامل فوراً
+          totalUnpaidBreakMins += duration;
         } else {
-          totalPaidBreakMins += duration; // تجميع إجمالي البوزات المدفوعة
+          totalPaidBreakMins += duration;
         }
       }
     });
 
-    // حساب الزيادة في البوزات المدفوعة عن الحد الأقصى الإجمالي المسموح للشفت
     const excessPaidMins = Math.max(0, totalPaidBreakMins - Number(maxPaidMinutes || 0));
-
-    // إجمالي الدقائق المستقطعة = البوزات غير المدفوعة أصلاً + الفائض عن الحد الأقصى للبوزات المدفوعة
     const unpaidMins = totalUnpaidBreakMins + excessPaidMins;
 
     const netMins = Math.max(0, grossMins - unpaidMins);
@@ -172,7 +170,7 @@ export default function HeuresPage() {
           onChange={(e) => handleDateChange(e.target.value)}
           style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "white", padding: "6px 12px", borderRadius: "6px", fontSize: "16px", fontWeight: "bold", textAlign: "center", marginBottom: "8px" }}
         />
-        <div style={{ fontSize: "13px", color: "#93c5fd" }}>Total Brut: {metrics.amount} €</div>
+        <div style={{ fontSize: "13px", color: "#93c5fd" }}>Total Brut: {metrics.amount} {currencySymbol}</div>
         <div style={{ fontSize: "28px", fontWeight: "bold", marginTop: "4px" }}>{metrics.formattedTime}</div>
       </div>
 
@@ -185,9 +183,13 @@ export default function HeuresPage() {
             onChange={(e) => setSelectedJobId(e.target.value)}
             style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "15px", background: "white" }}
           >
-            {jobs.map(job => (
-              <option key={job.id} value={job.id}>{job.name} ({job.rate} €/h)</option>
-            ))}
+            {jobs.length === 0 ? (
+              <option value="">Aucun lieu de travail (Ajouter un job)</option>
+            ) : (
+              jobs.map(job => (
+                <option key={job.id} value={job.id}>{job.name} ({job.rate} {currencySymbol}/h)</option>
+              ))
+            )}
           </select>
         </div>
 
@@ -282,7 +284,6 @@ export default function HeuresPage() {
             </div>
           ))}
 
-          {/* حقل الحد الأقصى الإجمالي للدقائق المدفوعة لكل البوزات */}
           <div style={{ marginTop: "12px", borderTop: "1px solid #e5e7eb", paddingTop: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "13px", color: "#4b5563", fontWeight: "bold" }}>Max pauses payées (Total min):</span>
             <input 
