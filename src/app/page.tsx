@@ -261,7 +261,7 @@ export default function HeuresPage() {
 
       </div>
 
-      <BottomNav active="heures" />
+      <BottomNav active="hours" />
     </main>
   );
 }
