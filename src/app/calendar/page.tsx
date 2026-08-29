@@ -25,6 +25,28 @@ const monthsData: Record<string, string[]> = {
   ar: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
 };
 
+// قاموس الترجمات للصفحة
+const translations: Record<string, any> = {
+  fr: {
+    edit: "Modifier",
+    delete: "Supprimer",
+    week: "Semaine",
+    total: "Total"
+  },
+  en: {
+    edit: "Edit",
+    delete: "Delete",
+    week: "Week",
+    total: "Total"
+  },
+  ar: {
+    edit: "تعديل",
+    delete: "حذف",
+    week: "أسبوع",
+    total: "الإجمالي"
+  }
+};
+
 export default function CalendarPage() {
   const [lang, setLang] = useState("fr");
   const [currentYear, setCurrentYear] = useState(2026);
@@ -35,7 +57,6 @@ export default function CalendarPage() {
   const [currencySymbol, setCurrencySymbol] = useState("€");
 
   useEffect(() => {
-    // جلب رمز العملة المختار من الإعدادات
     const savedSymbol = localStorage.getItem("monshift_symbol");
     if (savedSymbol) {
       setCurrencySymbol(savedSymbol);
@@ -55,6 +76,8 @@ export default function CalendarPage() {
   }, []);
 
   const monthsList = monthsData[lang] || monthsData["fr"];
+  const t = translations[lang] || translations["fr"];
+  const dir = lang === 'ar' ? 'rtl' : 'ltr';
 
   const timeToMins = (timeStr: string) => {
     if (!timeStr) return 0;
@@ -104,7 +127,6 @@ export default function CalendarPage() {
     return { netMins, formattedTime, amount, job };
   };
 
-  // دالة دقيقة لحساب رقم الأسبوع الفعلي في السنة بناءً على يوم بداية الأسبوع
   const getWeekNumber = (date: Date) => {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     let shiftDays = 1; // Lundi
@@ -162,8 +184,22 @@ export default function CalendarPage() {
     return { totalMins, formattedTotalTime, totalAmount };
   };
 
+  // دالة حذف سجل اليوم
+  const handleDeleteDay = (dateKey: string) => {
+    const updatedHistory = { ...history };
+    delete updatedHistory[dateKey];
+    setHistory(updatedHistory);
+    localStorage.setItem("monshift_history", JSON.stringify(updatedHistory));
+  };
+
+  // دالة تعديل اليوم (توجه المستخدم لصفحة الساعات مع تخزين التاريخ المؤقت لو احتجت، أو ببساطة الانتقال لصفحة الهورس)
+  const handleEditDay = (dateKey: string) => {
+    // يمكنك حفظ التاريخ المراد تعديله في localStorage لتقرأه صفحة الساعات إن أردت، أو الانتقال مباشرة
+    window.location.href = `/heures`;
+  };
+
   return (
-    <main style={{ maxWidth: "480px", margin: "0 auto", paddingBottom: "110px", fontFamily: "sans-serif", background: "#f3f4f6", minHeight: "100vh" }}>
+    <main style={{ maxWidth: "480px", margin: "0 auto", paddingBottom: "110px", fontFamily: "sans-serif", background: "#f3f4f6", minHeight: "100vh" }} dir={dir}>
       
       <header style={{ background: "#1e3a8a", color: "white", padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         {selectedMonth !== null ? (
@@ -194,7 +230,7 @@ export default function CalendarPage() {
                 style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", background: "white", borderBottom: "1px solid #e5e7eb", cursor: "pointer" }}
               >
                 <div style={{ fontSize: "16px", fontWeight: "bold", color: "#1e3a8a", textTransform: "capitalize" }}>{monthName + " " + currentYear}</div>
-                <div style={{ textAlign: "right" }}>
+                <div style={{ textAlign: lang === 'ar' ? 'left' : 'right' }}>
                   <div style={{ fontSize: "15px", fontWeight: "bold", color: "#0284c7" }}>{stats.totalAmount.toFixed(2) + " " + currencySymbol}</div>
                   <div style={{ fontSize: "12px", color: "#6b7280" }}>{stats.formattedTotalTime}</div>
                 </div>
@@ -230,9 +266,9 @@ export default function CalendarPage() {
               return (
                 <div key={weekNo} style={{ marginBottom: "16px" }}>
                   <div style={{ background: "#1e3a8a", color: "white", padding: "8px 16px", fontSize: "13px", display: "flex", justifyContent: "space-between", alignItems: "center", opacity: 0.95 }}>
-                    <span style={{ fontWeight: "bold" }}>Semaine {weekNo}</span>
+                    <span style={{ fontWeight: "bold" }}>{t.week} {weekNo}</span>
                     <div style={{ display: "flex", gap: "12px" }}>
-                      <span style={{ color: "#86efac" }}>Total {weekAmount.toFixed(2) + " " + currencySymbol}</span>
+                      <span style={{ color: "#86efac" }}>{t.total} {weekAmount.toFixed(2) + " " + currencySymbol}</span>
                       <span>{weekTimeFormatted}</span>
                     </div>
                   </div>
@@ -244,7 +280,7 @@ export default function CalendarPage() {
 
                     return (
                       <div key={d.dateKey} style={{ display: "flex", background: "white", borderBottom: "1px solid #e5e7eb", minHeight: "65px", alignItems: "center" }}>
-                        <div style={{ width: "90px", padding: "10px", textAlign: "center", borderRight: "1px solid #e5e7eb" }}>
+                        <div style={{ width: "90px", padding: "10px", textAlign: "center", borderInlineEnd: "1px solid #e5e7eb" }}>
                           <div style={{ fontSize: "11px", color: "#6b7280", textTransform: "capitalize" }}>{d.dayOfWeek}</div>
                           <div style={{ fontSize: "18px", fontWeight: "bold", color: hasRecord ? "#1e3a8a" : "#9ca3af" }}>{d.dayNumber}</div>
                           <div style={{ fontSize: "10px", color: "#9ca3af" }}>{monthsList[selectedMonth]}</div>
@@ -252,21 +288,37 @@ export default function CalendarPage() {
 
                         <div style={{ flex: 1, padding: "10px 14px" }}>
                           {hasRecord && metrics ? (
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderLeft: "4px solid " + metrics.job.color, paddingLeft: "8px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderInlineStart: "4px solid " + metrics.job.color, paddingInlineStart: "8px" }}>
                               <div>
                                 <div style={{ color: "#7c3aed", fontWeight: "bold", fontSize: "14px" }}>{metrics.job.name}</div>
                                 <div style={{ color: "#6b7280", fontSize: "12px" }}>
                                   🕒 {d.record!.startTime + " - " + d.record!.endTime}
                                   {validBreaks.length > 0 && (
-                                    <span style={{ marginLeft: "6px", color: "#d97706" }}>
+                                    <span style={{ marginInlineStart: "6px", color: "#d97706" }}>
                                       {validBreaks.map(b => "☕ " + b.startTime + "-" + b.endTime).join(" | ")}
                                     </span>
                                   )}
                                 </div>
                                 <div style={{ color: "#374151", fontSize: "12px", fontWeight: "bold", marginTop: "2px" }}>{metrics.formattedTime}</div>
                               </div>
-                              <div style={{ textAlign: "right" }}>
+
+                              {/* أزرار التعديل والحذف */}
+                              <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
                                 <div style={{ color: "#1f2937", fontWeight: "bold", fontSize: "15px" }}>{metrics.amount.toFixed(2) + " " + currencySymbol}</div>
+                                <div style={{ display: "flex", gap: "8px" }}>
+                                  <button 
+                                    onClick={() => handleEditDay(d.dateKey)} 
+                                    style={{ background: "#3b82f6", color: "white", border: "none", padding: "2px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer", fontWeight: "bold" }}
+                                  >
+                                    {t.edit}
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteDay(d.dateKey)} 
+                                    style={{ background: "#ef4444", color: "white", border: "none", padding: "2px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer", fontWeight: "bold" }}
+                                  >
+                                    {t.delete}
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           ) : (
@@ -285,7 +337,7 @@ export default function CalendarPage() {
 
       {selectedMonth !== null && (
         <div style={{ position: "fixed", bottom: "60px", left: 0, right: 0, maxWidth: "480px", margin: "0 auto", background: "#1e3a8a", color: "white", padding: "12px", textAlign: "center", boxShadow: "0 -2px 10px rgba(0,0,0,0.1)" }}>
-          <div style={{ fontSize: "12px", color: "#93c5fd" }}>Total {monthsList[selectedMonth] + " " + currentYear}</div>
+          <div style={{ fontSize: "12px", color: "#93c5fd" }}>{t.total} {monthsList[selectedMonth] + " " + currentYear}</div>
           <div style={{ fontSize: "16px", fontWeight: "bold" }}>
             {(() => {
               const stats = getMonthStats(currentYear, selectedMonth);
