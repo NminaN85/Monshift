@@ -200,7 +200,7 @@ export default function StatsPage() {
 
   const totals = getTotalMetrics();
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
     if (filteredRecords.length === 0) {
       alert(t.noData);
       return;
@@ -230,13 +230,26 @@ export default function StatsPage() {
     });
 
     const csvString = csvRows.join("\n");
-    // استخدام Blob للطريقة الآمنة والحديثة لتنزيل الملفات
     const blob = new Blob(["\uFEFF" + csvString], { type: "text/csv;charset=utf-8;" });
+    const fileName = `monshift_report_${startDate}_to_${endDate}.csv`;
+
+    if (navigator.canShare && navigator.canShare({ files: [new File([blob], fileName, { type: "text/csv" })] })) {
+      try {
+        const file = new File([blob], fileName, { type: "text/csv" });
+        await navigator.share({
+          title: 'MonShift Report CSV',
+          files: [file],
+        });
+        return;
+      } catch (error) {
+        // تجاهل لو المستخدم ألغى المشاركة
+      }
+    }
+
     const url = URL.createObjectURL(blob);
-    
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `monshift_report_${startDate}_to_${endDate}.csv`);
+    link.setAttribute("download", fileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -350,7 +363,6 @@ export default function StatsPage() {
 
       <div style={{ padding: "16px" }}>
         
-        {/* صندوق تحديد المدة */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "14px" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "10px" }}>📅 {t.selectPeriod}</div>
           <div style={{ display: "flex", gap: "10px" }}>
@@ -375,7 +387,6 @@ export default function StatsPage() {
           </div>
         </div>
 
-        {/* خيارات الفلترة */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "14px" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "8px" }}>⚙️ {t.includeElements}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "13px", color: "#4b5563" }}>
@@ -397,7 +408,6 @@ export default function StatsPage() {
           </div>
         </div>
 
-        {/* الملخص */}
         <div style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)", color: "white", padding: "16px", borderRadius: "12px", marginBottom: "14px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
           <div>
             <div style={{ fontSize: "12px", opacity: 0.8 }}>{t.totalPeriod} ({totals.daysCount} {t.days})</div>
@@ -409,7 +419,6 @@ export default function StatsPage() {
           </div>
         </div>
 
-        {/* أزرار التصدير */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
           <button 
             onClick={handleExportCSV}
@@ -431,7 +440,6 @@ export default function StatsPage() {
           </button>
         </div>
 
-        {/* معاينة حية */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "10px", borderBottom: "1px solid #e5e7eb", paddingBottom: "8px" }}>
             👁️ {t.previewTitle} ({filteredRecords.length})
