@@ -32,8 +32,15 @@ export default function CalendarPage() {
   const [history, setHistory] = useState<Record<string, DayRecord>>({});
   const [jobs, setJobs] = useState<Job[]>([]);
   const [startDayOption, setStartDayOption] = useState("Lundi");
+  const [currencySymbol, setCurrencySymbol] = useState("€");
 
   useEffect(() => {
+    // جلب رمز العملة المختار من الإعدادات
+    const savedSymbol = localStorage.getItem("monshift_symbol");
+    if (savedSymbol) {
+      setCurrencySymbol(savedSymbol);
+    }
+
     const savedLang = localStorage.getItem("monshift_lang");
     if (savedLang) setLang(savedLang);
 
@@ -188,7 +195,7 @@ export default function CalendarPage() {
               >
                 <div style={{ fontSize: "16px", fontWeight: "bold", color: "#1e3a8a", textTransform: "capitalize" }}>{monthName + " " + currentYear}</div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "15px", fontWeight: "bold", color: "#0284c7" }}>{stats.totalAmount.toFixed(2) + " €"}</div>
+                  <div style={{ fontSize: "15px", fontWeight: "bold", color: "#0284c7" }}>{stats.totalAmount.toFixed(2) + " " + currencySymbol}</div>
                   <div style={{ fontSize: "12px", color: "#6b7280" }}>{stats.formattedTotalTime}</div>
                 </div>
               </div>
@@ -225,7 +232,7 @@ export default function CalendarPage() {
                   <div style={{ background: "#1e3a8a", color: "white", padding: "8px 16px", fontSize: "13px", display: "flex", justifyContent: "space-between", alignItems: "center", opacity: 0.95 }}>
                     <span style={{ fontWeight: "bold" }}>Semaine {weekNo}</span>
                     <div style={{ display: "flex", gap: "12px" }}>
-                      <span style={{ color: "#86efac" }}>Total {weekAmount.toFixed(2) + " €"}</span>
+                      <span style={{ color: "#86efac" }}>Total {weekAmount.toFixed(2) + " " + currencySymbol}</span>
                       <span>{weekTimeFormatted}</span>
                     </div>
                   </div>
@@ -259,7 +266,7 @@ export default function CalendarPage() {
                                 <div style={{ color: "#374151", fontSize: "12px", fontWeight: "bold", marginTop: "2px" }}>{metrics.formattedTime}</div>
                               </div>
                               <div style={{ textAlign: "right" }}>
-                                <div style={{ color: "#1f2937", fontWeight: "bold", fontSize: "15px" }}>{metrics.amount.toFixed(2) + " €"}</div>
+                                <div style={{ color: "#1f2937", fontWeight: "bold", fontSize: "15px" }}>{metrics.amount.toFixed(2) + " " + currencySymbol}</div>
                               </div>
                             </div>
                           ) : (
@@ -282,7 +289,7 @@ export default function CalendarPage() {
           <div style={{ fontSize: "16px", fontWeight: "bold" }}>
             {(() => {
               const stats = getMonthStats(currentYear, selectedMonth);
-              return stats.formattedTotalTime + " - " + stats.totalAmount.toFixed(2) + " €";
+              return stats.formattedTotalTime + " - " + stats.totalAmount.toFixed(2) + " " + currencySymbol;
             })()}
           </div>
         </div>
