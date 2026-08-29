@@ -60,6 +60,26 @@ export default function JobsPage() {
     localStorage.setItem("monshift_jobs", JSON.stringify(updated));
   };
 
+  // النمط المشترك للخطوات لجعلها مرنة
+  const stepContentStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    flexGrow: 1
+  };
+
+  // النمط المشترك للأزرار لتثبيتها في الأسفل
+  const buttonStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "14px",
+    background: "#1e3a8a",
+    color: "white",
+    border: "none",
+    borderRadius: "10px",
+    fontWeight: "bold",
+    fontSize: "15px",
+    marginTop: "auto" // هذا هو السحر لثبات الزر
+  };
+
   return (
     <main style={{ maxWidth: "480px", margin: "0 auto", padding: "16px", fontFamily: "sans-serif", paddingBottom: "90px", background: "#f3f4f6", minHeight: "100vh", direction: lang === "ar" ? "rtl" : "ltr" }}>
       <header style={{ background: "#1e3a8a", color: "white", padding: "16px", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
@@ -88,39 +108,45 @@ export default function JobsPage() {
 
       {showModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100 }}>
-          <div style={{ background: "white", width: "100%", maxWidth: "480px", borderTopLeftRadius: "20px", borderTopRightRadius: "20px", padding: "20px", boxSizing: "border-box" }}>
+          {/* المودال الأبيض المرن */}
+          <div style={{
+            background: "white",
+            width: "100%",
+            maxWidth: "480px",
+            borderTopLeftRadius: "20px",
+            borderTopRightRadius: "20px",
+            padding: "20px",
+            boxSizing: "border-box",
+            display: "flex",
+            flexDirection: "column",
+            maxHeight: "90vh", // لضمان عدم تغطية الشاشة بالكامل
+            overflow: "hidden"
+          }}>
             {step === 1 && (
-              <div>
+              <div style={stepContentStyle}>
                 <h3 style={{ fontSize: "16px", marginBottom: "4px" }}>{t.step1Title}</h3>
                 <input type="text" placeholder={t.step1Placeholder} value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #d1d5db", fontSize: "16px", boxSizing: "border-box", marginBottom: "20px" }} />
-                <button onClick={() => { if(name.trim()) setStep(2); }} style={{ width: "100%", padding: "14px", background: "#1e3a8a", color: "white", border: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "15px" }}>{t.next}</button>
+                <button onClick={() => { if(name.trim()) setStep(2); }} style={buttonStyle}>{t.next}</button>
               </div>
             )}
             {step === 2 && (
-              <div>
+              <div style={stepContentStyle}>
                 <h3 style={{ fontSize: "16px", marginBottom: "4px" }}>{t.step2Title} ({currencySymbol})</h3>
                 <input type="number" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #d1d5db", fontSize: "16px", boxSizing: "border-box", marginBottom: "20px", textAlign: "center" }} />
-                <button onClick={() => setStep(3)} style={{ width: "100%", padding: "14px", background: "#1e3a8a", color: "white", border: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "15px" }}>{t.next}</button>
+                <button onClick={() => setStep(3)} style={buttonStyle}>{t.next}</button>
               </div>
             )}
-            // ... (في نفس المكان بتاع الخطوة التالتة)
             {step === 3 && (
-              // عدّل الـ div ده بالكامل ليأخذ مساحة كاملة ويجبر الزرار للأسفل
-              <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, justifyContent: "space-between", minHeight: "350px" }}>
-                <div>
-                  <h3 style={{ fontSize: "16px", marginBottom: "10px" }}>{t.step3Title}</h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "10px", marginBottom: "20px" }}>
-                    {COLORS.map((c) => (
-                      <button key={c} onClick={() => setColor(c)} style={{ width: "100%", height: "35px", background: c, border: color === c ? "3px solid #000" : "none", borderRadius: "8px", cursor: "pointer" }} />
-                    ))}
-                  </div>
+              <div style={stepContentStyle}>
+                <h3 style={{ fontSize: "16px", marginBottom: "10px" }}>{t.step3Title}</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "10px", marginBottom: "20px" }}>
+                  {COLORS.map((c) => (
+                    <button key={c} onClick={() => setColor(c)} style={{ width: "100%", height: "35px", background: c, border: color === c ? "3px solid #000" : "none", borderRadius: "8px", cursor: "pointer" }} />
+                  ))}
                 </div>
-                {/* الزرار ده هيفضل ثابت تحت خالص بسبب الـ space-between */}
-                <button onClick={saveJob} style={{ width: "100%", padding: "14px", background: "#1e3a8a", color: "white", border: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "15px", marginTop: "20px" }}>{t.create}</button>
+                <button onClick={saveJob} style={buttonStyle}>{t.create}</button>
               </div>
             )}
-// ...
-
           </div>
         </div>
       )}
