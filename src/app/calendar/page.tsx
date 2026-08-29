@@ -6,25 +6,36 @@ import BottomNav from "@/components/BottomNav";
 interface BreakItem { duration: number; isPaid: boolean; }
 interface DayRecord { date: string; startTime: string; endTime: string; breaks: BreakItem[]; notes: string; }
 
+const texts: Record<string, any> = {
+  fr: { title: "Calendrier & Historique", noRecords: "Aucun jour enregistré." },
+  en: { title: "Calendar & History", noRecords: "No recorded days." },
+  ar: { title: "التقويم والسجل", noRecords: "لا توجد أيام مسجلة حتى الآن." }
+};
+
 export default function CalendarPage() {
+  const [lang, setLang] = useState("fr");
   const [history, setHistory] = useState<Record<string, DayRecord>>({});
 
   useEffect(() => {
+    const savedLang = localStorage.getItem("monshift_lang");
+    if (savedLang) setLang(savedLang);
+
     const saved = localStorage.getItem("monshift_history");
     if (saved) setHistory(JSON.parse(saved));
   }, []);
 
+  const t = texts[lang] || texts["fr"];
   const sortedDays = Object.values(history).sort((a, b) => a.date.localeCompare(b.date));
 
   return (
-    <main style={{ maxWidth: "480px", margin: "0 auto", padding: "16px", fontFamily: "sans-serif", paddingBottom: "90px", background: "#f3f4f6", minHeight: "100vh" }}>
+    <main style={{ maxWidth: "480px", margin: "0 auto", padding: "16px", fontFamily: "sans-serif", paddingBottom: "90px", background: "#f3f4f6", minHeight: "100vh", direction: lang === "ar" ? "rtl" : "ltr" }}>
       <header style={{ background: "#1e3a8a", color: "white", padding: "16px", borderRadius: "12px", textAlign: "center", marginBottom: "20px" }}>
-        <h1 style={{ fontSize: "18px", margin: 0 }}>📅 سجل الأيام المحفوظة</h1>
+        <h1 style={{ fontSize: "18px", margin: 0 }}>📅 {t.title}</h1>
       </header>
 
       {sortedDays.length === 0 ? (
         <div style={{ background: "white", padding: "30px", borderRadius: "12px", textAlign: "center", color: "#6b7280" }}>
-          <p>لا توجد أيام مسجلة حتى الآن.</p>
+          <p>{t.noRecords}</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
