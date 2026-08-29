@@ -9,18 +9,6 @@ interface BreakItem {
   isPaid: boolean;
 }
 
-interface DayRecord {
-  date: string;
-  startTime: string;
-  endTime: string;
-  breaks: BreakItem[];
-  maxPaidMinutes?: number;
-  notes: string;
-  jobId?: string;
-  isClockedIn?: boolean;
-  isPaused?: boolean;
-}
-
 const texts: Record<string, any> = {
   fr: {
     greeting: "Bonjour",
@@ -81,14 +69,11 @@ export default function MainPage() {
   const [currentDateStr, setCurrentDateStr] = useState("");
   const [todayKey, setTodayKey] = useState("");
   
-  // حالة الشفت اللحظي
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [startTime, setStartTime] = useState("");
-  const [pauseTime, setPauseTime] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   
-  // تتبع الأحداث اليومية للـ Timeline
   const [timelineEvents, setTimelineEvents] = useState<{ type: string; time: string; label: string }[]>([]);
 
   useEffect(() => {
@@ -108,7 +93,6 @@ export default function MainPage() {
     const key = `${yearStr}-${monthStr}-${dayStr}`;
     setTodayKey(key);
 
-    // استرجاع السجل الحالي إن وجد
     const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
     if (history[key]) {
       const dayData = history[key];
@@ -119,7 +103,6 @@ export default function MainPage() {
     }
   }, []);
 
-  // مؤقت حساب الساعات لحظة بلحظة
   useEffect(() => {
     let interval: any = null;
     if (isClockedIn && !isPaused) {
@@ -149,7 +132,6 @@ export default function MainPage() {
     setIsPaused(false);
     setTimelineEvents([{ type: 'entree', time: timeStr, label: t.entree }]);
 
-    // حفظ في التخزين
     const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
     history[todayKey] = {
       date: todayKey,
@@ -182,7 +164,6 @@ export default function MainPage() {
     setIsPaused(false);
     setElapsedSeconds(0);
 
-    // تحديث السجل بـ EndTime
     const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
     if (history[todayKey]) {
       history[todayKey].endTime = timeStr;
@@ -193,7 +174,6 @@ export default function MainPage() {
   return (
     <main style={{ maxWidth: "480px", margin: "0 auto", padding: "16px", fontFamily: "sans-serif", paddingBottom: "110px", background: "#f3f4f6", minHeight: "100vh", direction: lang === "ar" ? "rtl" : "ltr" }}>
       
-      {/* الترحيب والتاريخ */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <div>
           <div style={{ fontSize: "22px", fontWeight: "bold", color: "#1f2937" }}>{t.greeting} Mina.</div>
@@ -202,7 +182,6 @@ export default function MainPage() {
         <button onClick={() => window.location.href = "/calendar"} style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "8px 12px", cursor: "pointer", fontSize: "16px" }}>📅</button>
       </div>
 
-      {/* بطاقة العداد الحي الرئيسية (EN COURS) */}
       <div style={{ background: "#ffffff", borderRadius: "20px", padding: "24px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", marginBottom: "20px", position: "relative", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
           <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: isClockedIn ? (isPaused ? "#f59e0b" : "#10b981") : "#9ca3af" }}></span>
@@ -232,7 +211,6 @@ export default function MainPage() {
         )}
       </div>
 
-      {/* الخط الزمني لأحداث اليوم (Timeline) */}
       {isClockedIn && (
         <div style={{ background: "white", borderRadius: "20px", padding: "20px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", marginBottom: "20px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
@@ -254,7 +232,6 @@ export default function MainPage() {
         </div>
       )}
 
-      {/* أزرار التحكم السفلي أثناء العمل (Pause & Glissez pour terminer) */}
       {isClockedIn && (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <button 
@@ -274,7 +251,7 @@ export default function MainPage() {
         </div>
       )}
 
-      <BottomNav active="home" />
+      <BottomNav active="hours" />
     </main>
   );
 }
