@@ -192,10 +192,10 @@ export default function CalendarPage() {
     localStorage.setItem("monshift_history", JSON.stringify(updatedHistory));
   };
 
-  // دالة تعديل اليوم (توجه المستخدم لصفحة الساعات مع تخزين التاريخ المؤقت لو احتجت، أو ببساطة الانتقال لصفحة الهورس)
+  // دالة تعديل اليوم (تخزين التاريخ المعين ثم الانتقال لصفحة الساعات)
   const handleEditDay = (dateKey: string) => {
-    // يمكنك حفظ التاريخ المراد تعديله في localStorage لتقرأه صفحة الساعات إن أردت، أو الانتقال مباشرة
-    window.location.href = `/heures`;
+    localStorage.setItem("monshift_edit_date", dateKey);
+    window.location.href = "/"; // بالافتراض أن الصفحة الرئيسية أو مسار الساعات هو الجذر أو /hours (يمكنك ضبطه حسب مسارك)
   };
 
   return (
@@ -302,7 +302,6 @@ export default function CalendarPage() {
                                 <div style={{ color: "#374151", fontSize: "12px", fontWeight: "bold", marginTop: "2px" }}>{metrics.formattedTime}</div>
                               </div>
 
-                              {/* أزرار التعديل والحذف */}
                               <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
                                 <div style={{ color: "#1f2937", fontWeight: "bold", fontSize: "15px" }}>{metrics.amount.toFixed(2) + " " + currencySymbol}</div>
                                 <div style={{ display: "flex", gap: "8px" }}>
