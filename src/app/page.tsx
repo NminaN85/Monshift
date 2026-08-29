@@ -30,7 +30,6 @@ export default function HeuresPage() {
   const [currencySymbol, setCurrencySymbol] = useState("€");
 
   useEffect(() => {
-    // جلب رمز العملة المختار من الإعدادات
     const savedSymbol = localStorage.getItem("monshift_symbol");
     if (savedSymbol) {
       setCurrencySymbol(savedSymbol);
@@ -45,7 +44,7 @@ export default function HeuresPage() {
       }
     }
 
-    // ضبط تاريخ اليوم الفعلي تلقائياً
+    // ضبط تاريخ اليوم الفعلي
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -64,6 +63,12 @@ export default function HeuresPage() {
         if (dayRecord.maxPaidMinutes !== undefined) setMaxPaidMinutes(dayRecord.maxPaidMinutes);
         setNotes(dayRecord.notes || "");
         if (dayRecord.jobId) setSelectedJobId(dayRecord.jobId);
+      } else {
+        // تفريغ الحقول لو اليوم ملوش سجل سابق
+        setStartTime("");
+        setEndTime("");
+        setBreaks([]);
+        setNotes("");
       }
     }
   }, []);
