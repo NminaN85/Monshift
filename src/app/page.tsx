@@ -3,10 +3,9 @@
 import { useState, useEffect } from "react";
 import BottomNav from "@/components/BottomNav";
 
-interface BreakItem { 
-  id: string; 
-  startTime: string; 
-  endTime: string; 
+interface BreakItem {
+  startTime: string;
+  endTime: string;
   isPaid: boolean;
 }
 
@@ -15,305 +14,267 @@ interface DayRecord {
   startTime: string;
   endTime: string;
   breaks: BreakItem[];
-  maxPaidMinutes: number;
+  maxPaidMinutes?: number;
   notes: string;
   jobId?: string;
+  isClockedIn?: boolean;
+  isPaused?: boolean;
 }
 
-interface Job {
-  id: string;
-  name: string;
-  rate: number;
-  color: string;
-}
+const texts: Record<string, any> = {
+  fr: {
+    greeting: "Bonjour",
+    enCours: "EN COURS",
+    paused: "EN PAUSE",
+    notStarted: "Prêt à travailler",
+    startShift: "Commencer le shift",
+    pauseBtn: "Pause",
+    resumeBtn: "Reprise",
+    endShiftSlide: "Glissez pour terminer",
+    journal: "JOURNÉE",
+    entree: "Entrée",
+    pauseLabel: "Pause",
+    reprise: "Reprise",
+    sortie: "Sortie",
+    noShiftToday: "Aucun shift actif aujourd'hui",
+    hoursToDo: "+ Heures à effectuer"
+  },
+  en: {
+    greeting: "Hello",
+    enCours: "RUNNING",
+    paused: "PAUSED",
+    notStarted: "Ready to work",
+    startShift: "Start shift",
+    pauseBtn: "Pause",
+    resumeBtn: "Resume",
+    endShiftSlide: "Slide to finish",
+    journal: "TODAY",
+    entree: "Clock In",
+    pauseLabel: "Break",
+    reprise: "Resume",
+    sortie: "Clock Out",
+    noShiftToday: "No active shift today",
+    hoursToDo: "+ Hours to do"
+  },
+  ar: {
+    greeting: "أهلاً بك",
+    enCours: "جاري العمل",
+    paused: "في استراحة",
+    notStarted: "جاهز للبدء",
+    startShift: "بدء الشفت",
+    pauseBtn: "استراحة",
+    resumeBtn: "استئناف",
+    endShiftSlide: "اسحب لإنهاء الشفت",
+    journal: "سجل اليوم",
+    entree: "دخول",
+    pauseLabel: "استراحة",
+    reprise: "عودة",
+    sortie: "خروج",
+    noShiftToday: "لا يوجد شفت نشط اليوم",
+    hoursToDo: "+ إضافة ساعات"
+  }
+};
 
-export default function HeuresPage() {
-  const [selectedDate, setSelectedDate] = useState("2026-08-17");
-  const [startTime, setStartTime] = useState("07:00");
-  const [endTime, setEndTime] = useState("15:00");
-  const [breaks, setBreaks] = useState<BreakItem[]>([
-    { id: "1", startTime: "", endTime: "", isPaid: false }
-  ]);
-  const [maxPaidMinutes, setMaxPaidMinutes] = useState<number>(30);
-  const [notes, setNotes] = useState("");
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [selectedJobId, setSelectedJobId] = useState("");
-  const [saveSuccess, setSaveSuccess] = useState(false);
+export default function MainPage() {
+  const [lang, setLang] = useState("fr");
   const [currencySymbol, setCurrencySymbol] = useState("€");
+  const [currentDateStr, setCurrentDateStr] = useState("");
+  const [todayKey, setTodayKey] = useState("");
+  
+  // حالة الشفت اللحظي
+  const [isClockedIn, setIsClockedIn] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [startTime, setStartTime] = useState("");
+  const [pauseTime, setPauseTime] = useState("");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  
+  // تتبع الأحداث اليومية للـ Timeline
+  const [timelineEvents, setTimelineEvents] = useState<{ type: string; time: string; label: string }[]>([]);
 
   useEffect(() => {
-    // جلب رمز العملة المختار من الإعدادات
+    const savedLang = localStorage.getItem("monshift_lang");
+    if (savedLang) setLang(savedLang);
+
     const savedSymbol = localStorage.getItem("monshift_symbol");
-    if (savedSymbol) {
-      setCurrencySymbol(savedSymbol);
-    }
+    if (savedSymbol) setCurrencySymbol(savedSymbol);
 
-    const savedJobs = localStorage.getItem("monshift_jobs");
-    if (savedJobs) {
-      const parsedJobs: Job[] = JSON.parse(savedJobs);
-      setJobs(parsedJobs);
-      if (parsedJobs.length > 0 && !selectedJobId) {
-        setSelectedJobId(parsedJobs[0].id);
-      }
-    }
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
+    setCurrentDateStr(now.toLocaleDateString(savedLang === 'ar' ? 'ar-SA' : 'fr-FR', options));
 
-    const savedHistory = localStorage.getItem("monshift_history");
-    if (savedHistory) {
-      const history = JSON.parse(savedHistory);
-      if (history[selectedDate]) {
-        const day = history[selectedDate];
-        setStartTime(day.startTime || "07:00");
-        setEndTime(day.endTime || "15:00");
-        setBreaks(day.breaks || []);
-        if (day.maxPaidMinutes !== undefined) setMaxPaidMinutes(day.maxPaidMinutes);
-        setNotes(day.notes || "");
-        if (day.jobId) setSelectedJobId(day.jobId);
-      }
-    }
-  }, [selectedDate]);
+    const yearStr = now.getFullYear();
+    const monthStr = String(now.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(now.getDate()).padStart(2, '0');
+    const key = `${yearStr}-${monthStr}-${dayStr}`;
+    setTodayKey(key);
 
-  const handleDateChange = (newDate: string) => {
-    setSelectedDate(newDate);
-    const savedHistory = localStorage.getItem("monshift_history");
-    if (savedHistory) {
-      const history = JSON.parse(savedHistory);
-      if (history[newDate]) {
-        const day = history[newDate];
-        setStartTime(day.startTime || "07:00");
-        setEndTime(day.endTime || "15:00");
-        setBreaks(day.breaks || []);
-        if (day.maxPaidMinutes !== undefined) setMaxPaidMinutes(day.maxPaidMinutes);
-        setNotes(day.notes || "");
-        if (day.jobId) setSelectedJobId(day.jobId);
-        return;
-      }
-    }
-    setStartTime("07:00");
-    setEndTime("15:00");
-    setBreaks([{ id: "1", startTime: "", endTime: "", isPaid: false }]);
-    setMaxPaidMinutes(30);
-    setNotes("");
-  };
-
-  const handleSave = () => {
+    // استرجاع السجل الحالي إن وجد
     const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
-
-    history[selectedDate] = {
-      date: selectedDate,
-      startTime,
-      endTime,
-      breaks,
-      maxPaidMinutes,
-      notes,
-      jobId: selectedJobId
-    };
-
-    localStorage.setItem("monshift_history", JSON.stringify(history));
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2500);
-  };
-
-  const timeToMins = (timeStr: string) => {
-    if (!timeStr) return 0;
-    const [h, m] = timeStr.split(":").map(Number);
-    return h * 60 + m;
-  };
-
-  const calculateMetrics = () => {
-    let startMins = timeToMins(startTime);
-    let endMins = timeToMins(endTime);
-    if (endMins <= startMins) endMins += 24 * 60;
-
-    let grossMins = endMins - startMins;
-    
-    let totalPaidBreakMins = 0;
-    let totalUnpaidBreakMins = 0;
-
-    breaks.forEach(b => {
-      if (b.startTime && b.endTime) {
-        let bStart = timeToMins(b.startTime);
-        let bEnd = timeToMins(b.endTime);
-        if (bEnd <= bStart) bEnd += 24 * 60;
-        const duration = Math.max(0, bEnd - bStart);
-
-        if (!b.isPaid) {
-          totalUnpaidBreakMins += duration;
-        } else {
-          totalPaidBreakMins += duration;
-        }
+    if (history[key]) {
+      const dayData = history[key];
+      if (dayData.startTime && !dayData.endTime) {
+        setIsClockedIn(true);
+        setStartTime(dayData.startTime);
       }
-    });
+    }
+  }, []);
 
-    const excessPaidMins = Math.max(0, totalPaidBreakMins - Number(maxPaidMinutes || 0));
-    const unpaidMins = totalUnpaidBreakMins + excessPaidMins;
+  // مؤقت حساب الساعات لحظة بلحظة
+  useEffect(() => {
+    let interval: any = null;
+    if (isClockedIn && !isPaused) {
+      interval = setInterval(() => {
+        setElapsedSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [isClockedIn, isPaused]);
 
-    const netMins = Math.max(0, grossMins - unpaidMins);
-    const hours = netMins / 60;
+  const t = texts[lang] || texts["fr"];
 
-    const currentJob = jobs.find(j => j.id === selectedJobId) || jobs[0];
-    const rate = currentJob ? currentJob.rate : 0;
-    const amount = hours * rate;
-
-    const formattedTime = `${Math.floor(netMins / 60)}h${String(netMins % 60).padStart(2, "0")}`;
-    return { formattedTime, amount: amount.toFixed(2) };
+  const formatSeconds = (sec: number) => {
+    const hrs = Math.floor(sec / 3600);
+    const mins = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  const metrics = calculateMetrics();
+  const handleStartShift = () => {
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    setStartTime(timeStr);
+    setIsClockedIn(true);
+    setIsPaused(false);
+    setTimelineEvents([{ type: 'entree', time: timeStr, label: t.entree }]);
+
+    // حفظ في التخزين
+    const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
+    history[todayKey] = {
+      date: todayKey,
+      startTime: timeStr,
+      endTime: "",
+      breaks: [],
+      notes: ""
+    };
+    localStorage.setItem("monshift_history", JSON.stringify(history));
+  };
+
+  const handleTogglePause = () => {
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    
+    if (!isPaused) {
+      setIsPaused(true);
+      setTimelineEvents(prev => [...prev, { type: 'pause', time: timeStr, label: t.pauseLabel }]);
+    } else {
+      setIsPaused(false);
+      setTimelineEvents(prev => [...prev, { type: 'reprise', time: timeStr, label: t.reprise }]);
+    }
+  };
+
+  const handleFinishShift = () => {
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    
+    setIsClockedIn(false);
+    setIsPaused(false);
+    setElapsedSeconds(0);
+
+    // تحديث السجل بـ EndTime
+    const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
+    if (history[todayKey]) {
+      history[todayKey].endTime = timeStr;
+      localStorage.setItem("monshift_history", JSON.stringify(history));
+    }
+  };
 
   return (
-    <main style={{ maxWidth: "480px", margin: "0 auto", paddingBottom: "110px", fontFamily: "sans-serif", background: "#f3f4f6", minHeight: "100vh" }}>
+    <main style={{ maxWidth: "480px", margin: "0 auto", padding: "16px", fontFamily: "sans-serif", paddingBottom: "110px", background: "#f3f4f6", minHeight: "100vh", direction: lang === "ar" ? "rtl" : "ltr" }}>
       
-      <div style={{ background: "#1e3a8a", color: "white", padding: "16px", textAlign: "center", borderBottomLeftRadius: "16px", borderBottomRightRadius: "16px" }}>
-        <input 
-          type="date" 
-          value={selectedDate} 
-          onChange={(e) => handleDateChange(e.target.value)}
-          style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "white", padding: "6px 12px", borderRadius: "6px", fontSize: "16px", fontWeight: "bold", textAlign: "center", marginBottom: "8px" }}
-        />
-        <div style={{ fontSize: "13px", color: "#93c5fd" }}>Total Brut: {metrics.amount} {currencySymbol}</div>
-        <div style={{ fontSize: "28px", fontWeight: "bold", marginTop: "4px" }}>{metrics.formattedTime}</div>
+      {/* الترحيب والتاريخ */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <div>
+          <div style={{ fontSize: "22px", fontWeight: "bold", color: "#1f2937" }}>{t.greeting} Mina.</div>
+          <div style={{ fontSize: "14px", color: "#6b7280", textTransform: "capitalize", marginTop: "2px" }}>{currentDateStr}</div>
+        </div>
+        <button onClick={() => window.location.href = "/calendar"} style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "8px 12px", cursor: "pointer", fontSize: "16px" }}>📅</button>
       </div>
 
-      <div style={{ padding: "16px" }}>
-        
-        <div style={{ background: "white", padding: "12px", borderRadius: "8px", marginBottom: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-          <label style={{ fontSize: "13px", color: "#6b7280", display: "block", marginBottom: "6px" }}>Lieu de travail (Job):</label>
-          <select 
-            value={selectedJobId} 
-            onChange={(e) => setSelectedJobId(e.target.value)}
-            style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "15px", background: "white" }}
+      {/* بطاقة العداد الحي الرئيسية (EN COURS) */}
+      <div style={{ background: "#ffffff", borderRadius: "20px", padding: "24px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", marginBottom: "20px", position: "relative", overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+          <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: isClockedIn ? (isPaused ? "#f59e0b" : "#10b981") : "#9ca3af" }}></span>
+          <span style={{ fontSize: "12px", fontWeight: "bold", letterSpacing: "1px", color: isClockedIn ? (isPaused ? "#d97706" : "#059669") : "#6b7280" }}>
+            {isClockedIn ? (isPaused ? t.paused : t.enCours) : t.notStarted}
+          </span>
+        </div>
+
+        <div style={{ fontSize: "44px", fontWeight: "bold", color: "#1f2937", letterSpacing: "-1px", marginBottom: "16px", fontFamily: "monospace" }}>
+          {isClockedIn ? formatSeconds(elapsedSeconds) : "00:00:00"}
+        </div>
+
+        {!isClockedIn ? (
+          <button 
+            onClick={handleStartShift}
+            style={{ width: "100%", background: "#1e3a8a", color: "white", border: "none", padding: "14px", borderRadius: "14px", fontWeight: "bold", fontSize: "15px", cursor: "pointer", boxShadow: "0 4px 6px rgba(30,58,138,0.2)" }}
           >
-            {jobs.length === 0 ? (
-              <option value="">Aucun lieu de travail (Ajouter un job)</option>
-            ) : (
-              jobs.map(job => (
-                <option key={job.id} value={job.id}>{job.name} ({job.rate} {currencySymbol}/h)</option>
-              ))
-            )}
-          </select>
-        </div>
-
-        <div style={{ background: "white", padding: "12px", borderRadius: "8px", marginBottom: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-          <div style={{ fontWeight: "bold", marginBottom: "8px", fontSize: "14px", color: "#374151" }}>🕒 Horaires de travail</div>
-          <div style={{ display: "flex", gap: "10px" }}>
-            <div style={{ flex: 1 }}>
-              <span style={{ fontSize: "12px", color: "#6b7280" }}>Début</span>
-              <input 
-                type="time" 
-                value={startTime} 
-                onChange={(e) => setStartTime(e.target.value)}
-                style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "16px", background: "#f0fdf4", textAlign: "center", fontWeight: "bold", color: "#166534" }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <span style={{ fontSize: "12px", color: "#6b7280" }}>Fin</span>
-              <input 
-                type="time" 
-                value={endTime} 
-                onChange={(e) => setEndTime(e.target.value)}
-                style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "16px", background: "#fef2f2", textAlign: "center", fontWeight: "bold", color: "#991b1b" }}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div style={{ background: "white", padding: "12px", borderRadius: "8px", marginBottom: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-            <span style={{ fontWeight: "bold", fontSize: "14px", color: "#374151" }}>☕ Pauses (max 2)</span>
-            {breaks.length < 2 && (
-              <button 
-                onClick={() => setBreaks([...breaks, { id: Date.now().toString(), startTime: "", endTime: "", isPaid: false }])}
-                style={{ background: "#10b981", color: "white", border: "none", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer" }}
-              >
-                + Ajouter une pause
-              </button>
-            )}
-          </div>
-
-          {breaks.map((b, index) => (
-            <div key={b.id} style={{ borderTop: "1px solid #e5e7eb", paddingTop: "8px", marginTop: "8px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "13px", fontWeight: "bold", color: "#4b5563" }}>Pause #{index + 1}</span>
-                <button 
-                  onClick={() => setBreaks(breaks.filter(item => item.id !== b.id))}
-                  style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer" }}
-                >
-                  Supprimer
-                </button>
-              </div>
-              <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "6px" }}>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: "11px", color: "#6b7280" }}>Début</span>
-                  <input 
-                    type="time" 
-                    value={b.startTime} 
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setBreaks(breaks.map(item => item.id === b.id ? { ...item, startTime: val } : item));
-                    }}
-                    style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: "11px", color: "#6b7280" }}>Fin</span>
-                  <input 
-                    type="time" 
-                    value={b.endTime} 
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setBreaks(breaks.map(item => item.id === b.id ? { ...item, endTime: val } : item));
-                    }}
-                    style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px" }}
-                  />
-                </div>
-              </div>
-              
-              <div style={{ marginTop: "6px" }}>
-                <label style={{ fontSize: "13px", display: "flex", alignItems: "center", gap: "4px", color: "#374151", cursor: "pointer" }}>
-                  <input 
-                    type="checkbox" 
-                    checked={b.isPaid} 
-                    onChange={(e) => {
-                      const checked = e.target.checked;
-                      setBreaks(breaks.map(item => item.id === b.id ? { ...item, isPaid: checked } : item));
-                    }}
-                  />
-                  Pause payée
-                </label>
-              </div>
-            </div>
-          ))}
-
-          <div style={{ marginTop: "12px", borderTop: "1px solid #e5e7eb", paddingTop: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: "13px", color: "#4b5563", fontWeight: "bold" }}>Max pauses payées (Total min):</span>
-            <input 
-              type="number" 
-              value={maxPaidMinutes} 
-              onChange={(e) => setMaxPaidMinutes(Number(e.target.value))}
-              style={{ width: "70px", padding: "6px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", textAlign: "center" }}
-            />
-          </div>
-        </div>
-
-        <div style={{ background: "white", padding: "12px", borderRadius: "8px", marginBottom: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-          <textarea 
-            value={notes} 
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Ajouter une note..."
-            style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", minHeight: "60px", resize: "none" }}
-          />
-        </div>
-
-        <button 
-          onClick={handleSave}
-          style={{ width: "100%", background: "#1e3a8a", color: "white", border: "none", padding: "14px", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}
-        >
-          {saveSuccess ? "✓ Enregistré avec succès !" : "Enregistrer"}
-        </button>
-
+            {t.startShift}
+          </button>
+        ) : (
+          <button 
+            onClick={() => window.location.href = "/hours"}
+            style={{ background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", padding: "6px 12px", borderRadius: "8px", fontSize: "13px", fontWeight: "bold", cursor: "pointer" }}
+          >
+            {t.hoursToDo}
+          </button>
+        )}
       </div>
 
-      <BottomNav active="hours" />
+      {/* الخط الزمني لأحداث اليوم (Timeline) */}
+      {isClockedIn && (
+        <div style={{ background: "white", borderRadius: "20px", padding: "20px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", marginBottom: "20px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+            <span style={{ fontSize: "12px", fontWeight: "bold", color: "#6b7280", letterSpacing: "0.5px" }}>{t.journal}</span>
+            <span style={{ fontSize: "11px", background: "#eff6ff", color: "#1d4ed8", padding: "2px 8px", borderRadius: "6px", fontWeight: "bold" }}>Forfait</span>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px", position: "relative", paddingLeft: lang === 'ar' ? '0' : '12px', paddingRight: lang === 'ar' ? '12px' : '0' }}>
+            {timelineEvents.map((ev, idx) => (
+              <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: idx < timelineEvents.length - 1 ? "1px solid #f3f4f6" : "none", paddingBottom: "8px" }}>
+                <div>
+                  <div style={{ fontWeight: "bold", fontSize: "14px", color: "#1f2937" }}>{ev.label}</div>
+                  <div style={{ fontSize: "11px", color: "#6b7280" }}>{ev.type === 'entree' ? 'Début de shift' : 'En cours'}</div>
+                </div>
+                <div style={{ fontSize: "15px", fontWeight: "bold", color: "#374151" }}>{ev.time}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* أزرار التحكم السفلي أثناء العمل (Pause & Glissez pour terminer) */}
+      {isClockedIn && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <button 
+            onClick={handleTogglePause}
+            style={{ width: "100%", background: isPaused ? "#059669" : "#3b82f6", color: "white", border: "none", padding: "16px", borderRadius: "16px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 10px rgba(0,0,0,0.1)" }}
+          >
+            {isPaused ? t.resumeBtn : t.pauseBtn}
+          </button>
+
+          <button 
+            onClick={handleFinishShift}
+            style={{ width: "100%", background: "#065f46", color: "white", border: "none", padding: "16px", borderRadius: "16px", fontSize: "15px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", boxShadow: "0 4px 10px rgba(6,95,70,0.2)" }}
+          >
+            <span style={{ background: "rgba(255,255,255,0.2)", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center" }}>❯❯</span>
+            {t.endShiftSlide}
+          </button>
+        </div>
+      )}
+
+      <BottomNav active="home" />
     </main>
   );
 }
