@@ -1,7 +1,5 @@
 "use client";
 
-
-
 import { useState, useEffect } from "react";
 import BottomNav from "@/components/BottomNav";
 
@@ -148,7 +146,7 @@ export default function HeuresPage() {
         }
       });
 
-      const excessPaidMins = Math.max(0, totalPaidBreakMins - Number(shift.maxPaidMinutes || 0));
+      const excessPaidMins = Math.max(0, totalPaidBreakMins - Number(shift.maxPaidMinutes ?? 30));
       const unpaidMins = totalUnpaidBreakMins + excessPaidMins;
       const netMins = Math.max(0, grossMins - unpaidMins);
       const hours = netMins / 60;
@@ -307,6 +305,17 @@ export default function HeuresPage() {
                       </button>
                     </div>
                   ))}
+
+                  {/* حد الاستراحات المدفوعة للوردية */}
+                  <div style={{ marginTop: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "12px", color: "#4b5563" }}>Max pauses payées (min):</span>
+                    <input 
+                      type="number" 
+                      value={shift.maxPaidMinutes} 
+                      onChange={(e) => updateShift(shift.id, "maxPaidMinutes", Number(e.target.value))}
+                      style={{ width: "60px", padding: "4px", borderRadius: "4px", border: "1px solid #d1d5db", fontSize: "13px", textAlign: "center" }}
+                    />
+                  </div>
                 </div>
 
               </div>
