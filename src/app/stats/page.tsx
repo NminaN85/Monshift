@@ -23,6 +23,8 @@ const texts: Record<string, any> = {
   fr: {
     title: "Rapports & Statistiques Avancés",
     selectPeriod: "Sélectionner la période",
+    selectJobFilter: "Filtrer par lieu de travail",
+    allJobs: "Tous les lieux de travail",
     from: "Du",
     to: "Au",
     includeElements: "Éléments à inclure dans le rapport",
@@ -47,6 +49,8 @@ const texts: Record<string, any> = {
   en: {
     title: "Advanced Reports & Stats",
     selectPeriod: "Select Period",
+    selectJobFilter: "Filter by workplace",
+    allJobs: "All workplaces",
     from: "From",
     to: "To",
     includeElements: "Elements to include in the report",
@@ -71,6 +75,8 @@ const texts: Record<string, any> = {
   ar: {
     title: "التقارير والإحصائيات المتقدمة",
     selectPeriod: "تحديد الفترة الزمنية",
+    selectJobFilter: "فلترة حسب مكان العمل",
+    allJobs: "جميع أماكن العمل",
     from: "من تاريخ",
     to: "إلى تاريخ",
     includeElements: "العناصر المراد تضمينها في التقرير",
@@ -102,6 +108,8 @@ export default function StatsPage() {
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [selectedJobFilter, setSelectedJobFilter] = useState("ALL"); // فلتر مكان العمل
+
   const [includeTime, setIncludeTime] = useState(true);
   const [includeBreaks, setIncludeBreaks] = useState(true);
   const [includeMoney, setIncludeMoney] = useState(true);
@@ -177,7 +185,7 @@ export default function StatsPage() {
     return { netMins, formattedTime, amount, job };
   };
 
-  // تحويل وتحاهل التوافقية القديمة والجديدة لاستخراج كافة الورديات في الفترة المحددة
+  // تصفية الورديات حسب التاريخ وحسب مكان العمل المختار
   const getFilteredShifts = () => {
     let allShifts: { date: string; shift: ShiftRecord }[] = [];
 
@@ -202,6 +210,11 @@ export default function StatsPage() {
         }
       }
     });
+
+    // تطبيق فلتر مكان العمل (Job Filter)
+    if (selectedJobFilter !== "ALL") {
+      allShifts = allShifts.filter(({ shift }) => shift.jobId === selectedJobFilter);
+    }
 
     return allShifts.sort((a, b) => a.date.localeCompare(b.date));
   };
@@ -386,6 +399,7 @@ export default function StatsPage() {
 
       <div style={{ padding: "16px" }}>
         
+        {/* صندوق تحديد المدة */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "14px" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "10px" }}>📅 {t.selectPeriod}</div>
           <div style={{ display: "flex", gap: "10px" }}>
@@ -410,6 +424,22 @@ export default function StatsPage() {
           </div>
         </div>
 
+        {/* فلتر مكان العمل (Job Filter) */}
+        <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "14px" }}>
+          <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "8px" }}>🏢 {t.selectJobFilter}</div>
+          <select 
+            value={selectedJobFilter} 
+            onChange={(e) => setSelectedJobFilter(e.target.value)}
+            style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", background: "white", outline: "none" }}
+          >
+            <option value="ALL">{t.allJobs}</option>
+            {jobs.map(job => (
+              <option key={job.id} value={job.id}>{job.name} ({job.rate} {currencySymbol}/h)</option>
+            ))}
+          </select>
+        </div>
+
+        {/* خيارات عناصر التقرير */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "14px" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "8px" }}>⚙️ {t.includeElements}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "13px", color: "#4b5563" }}>
@@ -431,6 +461,7 @@ export default function StatsPage() {
           </div>
         </div>
 
+        {/* الملخص */}
         <div style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)", color: "white", padding: "16px", borderRadius: "12px", marginBottom: "14px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
           <div>
             <div style={{ fontSize: "12px", opacity: 0.8 }}>{t.totalPeriod} ({totals.shiftsCount} shifts)</div>
@@ -442,6 +473,7 @@ export default function StatsPage() {
           </div>
         </div>
 
+        {/* أزرار التصدير */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
           <button 
             onClick={handleExportCSV}
@@ -463,6 +495,7 @@ export default function StatsPage() {
           </button>
         </div>
 
+        {/* معاينة حية */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "10px", borderBottom: "1px solid #e5e7eb", paddingBottom: "8px" }}>
             👁️ {t.previewTitle} ({filteredShifts.length})
