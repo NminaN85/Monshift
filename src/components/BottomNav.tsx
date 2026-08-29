@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-const navTexts: Record<string, { hours: string; jobs: string; calendar: string; settings: string }> = {
+const navTexts: Record<string, { hours: string; jobs: string; calendar: string; settings: string; settings: string}> = {
   fr: { hours: "Heures", jobs: "Emplois", calendar: "Calendrier", settings: "Paramètres" , stats: "Statistiques"},
   en: { hours: "Hours", jobs: "Jobs", calendar: "Calendar", settings: "Settings", stats: "statstics" },
   ar: { hours: "الساعات", jobs: "الأماكن", calendar: "التقويم", settings: "الإعدادات" , stats: "الاحصائيات"},
