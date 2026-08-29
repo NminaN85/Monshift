@@ -21,6 +21,7 @@ const texts: Record<string, any> = {
 export default function JobsPage() {
   const [lang, setLang] = useState("fr");
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [currencySymbol, setCurrencySymbol] = useState("€");
   const [showModal, setShowModal] = useState(false);
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
@@ -28,6 +29,11 @@ export default function JobsPage() {
   const [color, setColor] = useState("#3b82f6");
 
   useEffect(() => {
+    const savedSymbol = localStorage.getItem("monshift_symbol");
+    if (savedSymbol) {
+      setCurrencySymbol(savedSymbol);
+    }
+
     const savedLang = localStorage.getItem("monshift_lang");
     if (savedLang) setLang(savedLang);
 
@@ -72,7 +78,7 @@ export default function JobsPage() {
             <div key={job.id} style={{ background: "white", padding: "14px 16px", borderRadius: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: lang !== "ar" ? `6px solid ${job.color}` : "none", borderRight: lang === "ar" ? `6px solid ${job.color}` : "none" }}>
               <div>
                 <div style={{ fontSize: "16px", fontWeight: "bold", color: "#1f2937" }}>{job.name}</div>
-                <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "2px" }}>{job.rate} € / h</div>
+                <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "2px" }}>{job.rate} {currencySymbol} / h</div>
               </div>
               <button onClick={() => deleteJob(job.id)} style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: "13px", cursor: "pointer" }}>{t.delete}</button>
             </div>
@@ -92,7 +98,7 @@ export default function JobsPage() {
             )}
             {step === 2 && (
               <div>
-                <h3 style={{ fontSize: "16px", marginBottom: "4px" }}>{t.step2Title}</h3>
+                <h3 style={{ fontSize: "16px", marginBottom: "4px" }}>{t.step2Title} ({currencySymbol})</h3>
                 <input type="number" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #d1d5db", fontSize: "16px", boxSizing: "border-box", marginBottom: "20px", textAlign: "center" }} />
                 <button onClick={() => setStep(3)} style={{ width: "100%", padding: "14px", background: "#1e3a8a", color: "white", border: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "15px" }}>{t.next}</button>
               </div>
