@@ -77,7 +77,7 @@ export default function JobsPage() {
     borderRadius: "10px",
     fontWeight: "bold",
     fontSize: "15px",
-    marginTop: "auto" // هذا هو السحر لثبات الزر
+    marginTop: "auto" // هذا هو السحر لثبات الزر أسفل المحتوى
   };
 
   return (
@@ -107,20 +107,31 @@ export default function JobsPage() {
       )}
 
       {showModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100 }}>
-          {/* المودال الأبيض المرن */}
+        // خلفية المودال: Flex مع alignItems: "center" للظهور في النص
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.5)",
+          display: "flex",
+          alignItems: "center", // هذا هو التغيير الأساسي: في المنتصف عمودياً
+          justifyContent: "center", // في المنتصف أفقياً
+          zIndex: 100,
+          overflow: "hidden"
+        }}>
+          {/* المودال الأبيض: حجم طبيعي و margin: auto */}
           <div style={{
             background: "white",
-            width: "100%",
+            width: "90%",
             maxWidth: "480px",
-            borderTopLeftRadius: "20px",
-            borderTopRightRadius: "20px",
+            borderRadius: "20px", // BorderRadius كامل
             padding: "20px",
             boxSizing: "border-box",
             display: "flex",
             flexDirection: "column",
-            maxHeight: "90vh", // لضمان عدم تغطية الشاشة بالكامل
-            overflow: "hidden"
+            // نحجم المودال لـ 70٪ من الشاشة عشان المحتوى والزرار يظهروا
+            maxHeight: "70vh",
+            // نضيف margin: auto عشان نضمن إنه في النص تماماً
+            margin: "auto"
           }}>
             {step === 1 && (
               <div style={stepContentStyle}>
