@@ -15,7 +15,47 @@ interface Job {
   color: string;
 }
 
+const pageTexts: Record<string, any> = {
+  fr: {
+    jobLabel: "Lieu de travail (Job):",
+    workTimes: "⏱️ Horaires de travail",
+    start: "Début",
+    end: "Fin",
+    breaks: "☕ Pauses (max 2)",
+    addBreak: "+ Ajouter une pause",
+    breakNum: "Pause #",
+    delete: "Supprimer",
+    paidBreak: "Pause payée",
+    notePlaceholder: "Ajouter une note...",
+  },
+  en: {
+    jobLabel: "Workplace (Job):",
+    workTimes: "⏱️ Work Hours",
+    start: "Start",
+    end: "End",
+    breaks: "☕ Breaks (max 2)",
+    addBreak: "+ Add break",
+    breakNum: "Break #",
+    delete: "Delete",
+    paidBreak: "Paid break",
+    notePlaceholder: "Add a note...",
+  },
+  ar: {
+    jobLabel: "مكان العمل (Job):",
+    workTimes: "⏱️ أوقات العمل",
+    start: "البداية",
+    end: "النهاية",
+    breaks: "☕ الاستراحات (حد أقصى 2)",
+    addBreak: "+ بوز جديد",
+    breakNum: "البوز #",
+    delete: "حذف",
+    paidBreak: "Pause payée (مدفوعة)",
+    notePlaceholder: "إضافة ملاحظة...",
+  }
+};
+
 export default function Home() {
+  const [lang, setLang] = useState("fr");
   const [selectedDate, setSelectedDate] = useState("2026-08-17");
   const [startTime, setStartTime] = useState("07:00");
   const [endTime, setEndTime] = useState("15:00");
@@ -25,6 +65,9 @@ export default function Home() {
   const [selectedJobId, setSelectedJobId] = useState<string>("");
 
   useEffect(() => {
+    const savedLang = localStorage.getItem("monshift_lang");
+    if (savedLang) setLang(savedLang);
+
     const savedJobs = localStorage.getItem("monshift_jobs");
     if (savedJobs) {
       const parsedJobs = JSON.parse(savedJobs);
@@ -32,6 +75,8 @@ export default function Home() {
       if (parsedJobs.length > 0) setSelectedJobId(parsedJobs[0].id);
     }
   }, []);
+
+  const t = pageTexts[lang] || pageTexts["fr"];
 
   const calculateTotals = () => {
     const [startH, startM] = startTime.split(":").map(Number);
@@ -83,8 +128,9 @@ export default function Home() {
   };
 
   return (
-    <main style={{ maxWidth: "480px", margin: "0 auto", padding: "16px", fontFamily: "sans-serif", paddingBottom: "90px", background: "#f3f4f6", minHeight: "100vh" }}>
-      <header style={{ background: "#1e3a8a", color: "white", padding: "14px", borderRadius: "12px", textAlign: "center", marginBottom: "16px", borderLeft: currentJob ? `6px solid ${currentJob.color}` : "none" }}>
+    <main style={{ maxWidth: "480px", margin: "0 auto", padding: "16px", fontFamily: "sans-serif", paddingBottom: "90px", background: "#f3f4f6", minHeight: "100vh", direction: lang === "ar" ? "rtl" : "ltr" }}>
+      
+      <header style={{ background: "#1e3a8a", color: "white", padding: "14px", borderRadius: "12px", textAlign: "center", marginBottom: "16px", borderLeft: currentJob && lang !== "ar" ? `6px solid ${currentJob.color}` : "none", borderRight: currentJob && lang === "ar" ? `6px solid ${currentJob.color}` : "none" }}>
         <div style={{ marginBottom: "6px" }}>
           <input
             type="date"
@@ -98,7 +144,7 @@ export default function Home() {
       </header>
 
       <section style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 2px 4px rgba(0,0,0,0.05)", marginBottom: "16px" }}>
-        <label style={{ fontSize: "13px", color: "#6b7280", display: "block", marginBottom: "6px" }}>مكان العمل (Job):</label>
+        <label style={{ fontSize: "13px", color: "#6b7280", display: "block", marginBottom: "6px" }}>{t.jobLabel}</label>
         <select
           value={selectedJobId}
           onChange={(e) => setSelectedJobId(e.target.value)}
@@ -113,46 +159,77 @@ export default function Home() {
       </section>
 
       <section style={{ background: "white", padding: "16px", borderRadius: "12px", boxShadow: "0 2px 4px rgba(0,0,0,0.05)", marginBottom: "16px" }}>
-        <h3 style={{ fontSize: "15px", marginBottom: "12px", color: "#374151" }}>⏱️ أوقات العمل</h3>
+        <h3 style={{ fontSize: "15px", marginBottom: "12px", color: "#374151" }}>{t.workTimes}</h3>
         <div style={{ display: "flex", gap: "12px", justifyContent: "space-between" }}>
           <div style={{ flex: 1 }}>
-            <label style={{ fontSize: "12px", color: "#6b7280", display: "block", marginBottom: "4px" }}>البداية</label>
-            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "16px", textAlign: "center", background: "#ecfdf5", color: "#065f46", fontWeight: "bold", boxSizing: "border-box" }} />
+            <label style={{ fontSize: "12px", color: "#6b7280", display: "block", marginBottom: "4px" }}>{t.start}</label>
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "16px", textAlign: "center", background: "#ecfdf5", color: "#065f46", fontWeight: "bold", boxSizing: "border-box" }}
+            />
           </div>
           <div style={{ flex: 1 }}>
-            <label style={{ fontSize: "12px", color: "#6b7280", display: "block", marginBottom: "4px" }}>النهاية</label>
-            <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "16px", textAlign: "center", background: "#fef2f2", color: "#991b1b", fontWeight: "bold", boxSizing: "border-box" }} />
+            <label style={{ fontSize: "12px", color: "#6b7280", display: "block", marginBottom: "4px" }}>{t.end}</label>
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "16px", textAlign: "center", background: "#fef2f2", color: "#991b1b", fontWeight: "bold", boxSizing: "border-box" }}
+            />
           </div>
         </div>
       </section>
 
       <section style={{ background: "white", padding: "16px", borderRadius: "12px", boxShadow: "0 2px 4px rgba(0,0,0,0.05)", marginBottom: "16px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-          <h3 style={{ fontSize: "15px", color: "#374151", margin: 0 }}>☕ الاستراحات</h3>
+          <h3 style={{ fontSize: "15px", color: "#374151", margin: 0 }}>{t.breaks}</h3>
           {breaks.length < 2 && (
-            <button onClick={addBreak} style={{ background: "#10b981", color: "white", border: "none", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer" }}>+ بوز جديد</button>
+            <button onClick={addBreak} style={{ background: "#10b981", color: "white", border: "none", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer" }}>
+              {t.addBreak}
+            </button>
           )}
         </div>
 
         {breaks.map((b, index) => (
           <div key={index} style={{ background: "#f9fafb", padding: "10px", borderRadius: "8px", marginBottom: "10px", border: "1px solid #e5e7eb" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-              <span style={{ fontSize: "13px", fontWeight: "bold", color: "#4b5563" }}>البوز #{index + 1}</span>
-              <button onClick={() => removeBreak(index)} style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer" }}>حذف</button>
+              <span style={{ fontSize: "13px", fontWeight: "bold", color: "#4b5563" }}>{t.breakNum}{index + 1}</span>
+              <button onClick={() => removeBreak(index)} style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer" }}>{t.delete}</button>
             </div>
+            
             <div style={{ marginBottom: "6px" }}>
-              <input type="number" placeholder="المدة بالدقائق" value={b.duration} onChange={(e) => updateBreak(index, "duration", Number(e.target.value))} style={{ width: "100%", padding: "6px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", boxSizing: "border-box" }} />
+              <input
+                type="number"
+                placeholder="Minutes"
+                value={b.duration}
+                onChange={(e) => updateBreak(index, "duration", Number(e.target.value))}
+                style={{ width: "100%", padding: "6px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", boxSizing: "border-box" }}
+              />
             </div>
+
             <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", cursor: "pointer", color: "#1f2937" }}>
-              <input type="checkbox" checked={b.isPaid} onChange={(e) => updateBreak(index, "isPaid", e.target.checked)} style={{ width: "15px", height: "15px", accentColor: "#10b981" }} />
-              <span>Pause payée (مدفوعة)</span>
+              <input
+                type="checkbox"
+                checked={b.isPaid}
+                onChange={(e) => updateBreak(index, "isPaid", e.target.checked)}
+                style={{ width: "15px", height: "15px", accentColor: "#10b981" }}
+              />
+              <span>{t.paidBreak}</span>
             </label>
           </div>
         ))}
       </section>
 
       <div style={{ marginBottom: "20px" }}>
-        <input type="text" placeholder="إضافة ملاحظة..." value={notes} onChange={(e) => setNotes(e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", boxSizing: "border-box", background: "white" }} />
+        <input
+          type="text"
+          placeholder={t.notePlaceholder}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", boxSizing: "border-box", background: "white" }}
+        />
       </div>
 
       <BottomNav active="hours" />
