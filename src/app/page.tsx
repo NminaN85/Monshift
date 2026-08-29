@@ -3,310 +3,347 @@
 import { useState, useEffect } from "react";
 import BottomNav from "@/components/BottomNav";
 
-interface BreakItem {
-  id: string;
-  startTime: string;
-  endTime: string;
+interface BreakItem { 
+  id: string; 
+  startTime: string; 
+  endTime: string; 
   isPaid: boolean;
 }
 
-const texts: Record<string, any> = {
-  fr: {
-    greeting: "Bonjour",
-    modeManual: "Saisie Manuelle",
-    modeLive: "Chronomètre",
-    startShift: "Démarrer le shift",
-    pauseBtn: "Prendre une Pause",
-    resumeBtn: "Reprendre le travail",
-    endShift: "Terminer et Enregistrer",
-    paidBreak: "Pause payée",
-    manualTitle: "Enregistrement Rapide",
-    saveManual: "Enregistrer la journée",
-    successMsg: "Enregistré avec succès !",
-    activeTimer: "Shift en cours depuis..."
-  },
-  en: {
-    greeting: "Hello",
-    modeManual: "Manual Entry",
-    modeLive: "Live Timer",
-    startShift: "Start Shift",
-    pauseBtn: "Take a Break",
-    resumeBtn: "Resume Work",
-    endShift: "Finish & Save",
-    paidBreak: "Paid break",
-    manualTitle: "Quick Entry",
-    saveManual: "Save Day",
-    successMsg: "Saved successfully!",
-    activeTimer: "Active shift running..."
-  },
-  ar: {
-    greeting: "أهلاً بك",
-    modeManual: "إدخال يدوي",
-    modeLive: "مؤقت مباشر",
-    startShift: "بدء الشفت الآن",
-    pauseBtn: "بدء استراحة",
-    resumeBtn: "استئناف العمل",
-    endShift: "إنهاء وحفظ الشفت",
-    paidBreak: "استراحة مدفوعة",
-    manualTitle: "تسجيل يدوي سريع",
-    saveManual: "حفظ بيانات اليوم",
-    successMsg: "تم الحفظ بنجاح!",
-    activeTimer: "الشفت جاري منذ..."
-  }
-};
+interface DayRecord {
+  date: string;
+  startTime: string;
+  endTime: string;
+  breaks: BreakItem[];
+  maxPaidMinutes: number;
+  notes: string;
+  jobId?: string;
+}
+
+interface Job {
+  id: string;
+  name: string;
+  rate: number;
+  color: string;
+}
 
 export default function MainPage() {
-  const [lang, setLang] = useState("fr");
-  const [mode, setMode] = useState<"live" | "manual">("live");
-  const [todayKey, setTodayKey] = useState("");
-  const [currentDateStr, setCurrentDateStr] = useState("");
+  const [mode, setMode] = useState<"manual" | "live">("manual");
+  const [selectedDate, setSelectedDate] = useState("2026-08-29");
+  const [startTime, setStartTime] = useState("07:00");
+  const [endTime, setEndTime] = useState("15:00");
+  const [breaks, setBreaks] = useState<BreakItem[]>([
+    { id: "1", startTime: "", endTime: "", isPaid: false }
+  ]);
+  const [maxPaidMinutes, setMaxPaidMinutes] = useState<number>(30);
+  const [notes, setNotes] = useState("");
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState("");
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [currencySymbol, setCurrencySymbol] = useState("€");
 
-  // حالات المؤقت الحي (Live Timer) مع الحفظ ضد الـ Refresh
+  // حالات العداد الحي (Live) الاحتياطي
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [breaks, setBreaks] = useState<BreakItem[]>([]);
-  const [isBreakPaid, setIsBreakPaid] = useState(false);
-
-  // حالات الإدخال اليدوي (Manual Entry)
-  const [manualStart, setManualStart] = useState("08:00");
-  const [manualEnd, setManualEnd] = useState("16:00");
-  const [manualBreakStart, setManualBreakStart] = useState("");
-  const [manualBreakEnd, setManualBreakEnd] = useState("");
-  const [manualIsPaid, setManualIsPaid] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const savedLang = localStorage.getItem("monshift_lang");
-    if (savedLang) setLang(savedLang);
+    const savedSymbol = localStorage.getItem("monshift_symbol");
+    if (savedSymbol) {
+      setCurrencySymbol(savedSymbol);
+    }
+
+    const savedJobs = localStorage.getItem("monshift_jobs");
+    if (savedJobs) {
+      const parsedJobs: Job[] = JSON.parse(savedJobs);
+      setJobs(parsedJobs);
+      if (parsedJobs.length > 0 && !selectedJobId) {
+        setSelectedJobId(parsedJobs[0].id);
+      }
+    }
 
     const now = new Date();
-    const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
-    setCurrentDateStr(now.toLocaleDateString(savedLang === 'ar' ? 'ar-SA' : 'fr-FR', options));
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+    setSelectedDate(todayStr);
 
-    const yearStr = now.getFullYear();
-    const monthStr = String(now.getMonth() + 1).padStart(2, '0');
-    const dayStr = String(now.getDate()).padStart(2, '0');
-    const key = `${yearStr}-${monthStr}-${dayStr}`;
-    setTodayKey(key);
-
-    // استرجاع حالة الموقت المحفوظة محلياً لضمان عدم ضياع الوقت عند عمل Refresh
-    const savedTimerState = localStorage.getItem("monshift_live_timer");
-    if (savedTimerState) {
-      const timerData = JSON.parse(savedTimerState);
-      if (timerData.date === key && timerData.isClockedIn) {
-        setIsClockedIn(true);
-        setIsPaused(timerData.isPaused);
-        setBreaks(timerData.breaks || []);
-        setIsBreakPaid(timerData.isBreakPaid || false);
-        
-        // حساب الثواني المنقضية بدقة بناءً على الوقت الحقيقي
-        if (!timerData.isPaused && timerData.startTimestamp) {
-          const diffSec = Math.floor((Date.now() - timerData.startTimestamp) / 1000);
-          setElapsedSeconds(diffSec + (timerData.pausedAccumulated || 0));
-        } else {
-          setElapsedSeconds(timerData.pausedAccumulated || 0);
-        }
+    const savedHistory = localStorage.getItem("monshift_history");
+    if (savedHistory) {
+      const history = JSON.parse(savedHistory);
+      if (history[todayStr]) {
+        const d = history[todayStr];
+        setStartTime(d.startTime || "07:00");
+        setEndTime(d.endTime || "15:00");
+        setBreaks(d.breaks || []);
+        if (d.maxPaidMinutes !== undefined) setMaxPaidMinutes(d.maxPaidMinutes);
+        setNotes(d.notes || "");
+        if (d.jobId) setSelectedJobId(d.jobId);
       }
     }
   }, []);
 
-  // تحديث العداد باستمرار
-  useEffect(() => {
-    let interval: any = null;
-    if (isClockedIn && !isPaused) {
-      interval = setInterval(() => {
-        setElapsedSeconds(prev => prev + 1);
-      }, 1000);
-    } else {
-      clearInterval(interval);
-    }
-    return () => clearInterval(interval);
-  }, [isClockedIn, isPaused]);
-
-  // حفظ حالة الموقت تلقائياً في التخزين المحلي
-  useEffect(() => {
-    if (isClockedIn) {
-      const timerData = {
-        date: todayKey,
-        isClockedIn,
-        isPaused,
-        startTimestamp: Date.now() - (elapsedSeconds * 1000),
-        pausedAccumulated: elapsedSeconds,
-        breaks,
-        isBreakPaid
-      };
-      localStorage.setItem("monshift_live_timer", JSON.stringify(timerData));
-    }
-  }, [isClockedIn, isPaused, elapsedSeconds, breaks, isBreakPaid, todayKey]);
-
-  const t = texts[lang] || texts["fr"];
-
-  const formatSeconds = (sec: number) => {
-    const hrs = Math.floor(sec / 3600);
-    const mins = Math.floor((sec % 3600) / 60);
-    const s = sec % 60;
-    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  };
-
-  const handleStartLive = () => {
-    const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    
-    setIsClockedIn(true);
-    setIsPaused(false);
-    setElapsedSeconds(0);
-
-    const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
-    history[todayKey] = { date: todayKey, startTime: timeStr, endTime: "", breaks: [], notes: "" };
-    localStorage.setItem("monshift_history", JSON.stringify(history));
-  };
-
-  const handleToggleBreak = () => {
-    const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-    if (!isPaused) {
-      setIsPaused(true);
-      const newBreak: BreakItem = { id: Date.now().toString(), startTime: timeStr, endTime: "", isPaid: isBreakPaid };
-      const updatedBreaks = [...breaks, newBreak];
-      setBreaks(updatedBreaks);
-
-      const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
-      if (history[todayKey]) {
-        history[todayKey].breaks = updatedBreaks;
-        localStorage.setItem("monshift_history", JSON.stringify(history));
-      }
-    } else {
-      setIsPaused(false);
-      const updatedBreaks = [...breaks];
-      if (updatedBreaks.length > 0) {
-        updatedBreaks[updatedBreaks.length - 1].endTime = timeStr;
-      }
-      setBreaks(updatedBreaks);
-
-      const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
-      if (history[todayKey]) {
-        history[todayKey].breaks = updatedBreaks;
-        localStorage.setItem("monshift_history", JSON.stringify(history));
+  const handleDateChange = (newDate: string) => {
+    setSelectedDate(newDate);
+    const savedHistory = localStorage.getItem("monshift_history");
+    if (savedHistory) {
+      const history = JSON.parse(savedHistory);
+      if (history[newDate]) {
+        const d = history[newDate];
+        setStartTime(d.startTime || "07:00");
+        setEndTime(d.endTime || "15:00");
+        setBreaks(d.breaks || []);
+        if (d.maxPaidMinutes !== undefined) setMaxPaidMinutes(d.maxPaidMinutes);
+        setNotes(d.notes || "");
+        if (d.jobId) setSelectedJobId(d.jobId);
+        return;
       }
     }
+    setStartTime("07:00");
+    setEndTime("15:00");
+    setBreaks([{ id: "1", startTime: "", endTime: "", isPaid: false }]);
+    setMaxPaidMinutes(30);
+    setNotes("");
   };
 
-  const handleFinishLive = () => {
-    const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    
-    // تسجيل وقت النهاية في السجل التاريخي
+  const handleSave = () => {
     const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
-    if (history[todayKey]) {
-      history[todayKey].endTime = timeStr;
-      localStorage.setItem("monshift_history", JSON.stringify(history));
-    }
 
-    setIsClockedIn(false);
-    setIsPaused(false);
-    setElapsedSeconds(0);
-    localStorage.removeItem("monshift_live_timer");
-    alert(t.successMsg);
-  };
-
-  const handleSaveManual = () => {
-    const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
-    const manualBreaks = manualBreakStart && manualBreakEnd ? [{ id: "1", startTime: manualBreakStart, endTime: manualBreakEnd, isPaid: manualIsPaid }] : [];
-
-    history[todayKey] = {
-      date: todayKey,
-      startTime: manualStart,
-      endTime: manualEnd,
-      breaks: manualBreaks,
-      notes: ""
+    history[selectedDate] = {
+      date: selectedDate,
+      startTime,
+      endTime,
+      breaks,
+      maxPaidMinutes,
+      notes,
+      jobId: selectedJobId
     };
 
     localStorage.setItem("monshift_history", JSON.stringify(history));
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 2500);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2500);
   };
 
+  const timeToMins = (timeStr: string) => {
+    if (!timeStr) return 0;
+    const [h, m] = timeStr.split(":").map(Number);
+    return h * 60 + m;
+  };
+
+  const calculateMetrics = () => {
+    let startMins = timeToMins(startTime);
+    let endMins = timeToMins(endTime);
+    if (endMins <= startMins) endMins += 24 * 60;
+
+    let grossMins = endMins - startMins;
+    let totalPaidBreakMins = 0;
+    let totalUnpaidBreakMins = 0;
+
+    breaks.forEach(b => {
+      if (b.startTime && b.endTime) {
+        let bStart = timeToMins(b.startTime);
+        let bEnd = timeToMins(b.endTime);
+        if (bEnd <= bStart) bEnd += 24 * 60;
+        const duration = Math.max(0, bEnd - bStart);
+
+        if (!b.isPaid) {
+          totalUnpaidBreakMins += duration;
+        } else {
+          totalPaidBreakMins += duration;
+        }
+      }
+    });
+
+    const excessPaidMins = Math.max(0, totalPaidBreakMins - Number(maxPaidMinutes || 0));
+    const unpaidMins = totalUnpaidBreakMins + excessPaidMins;
+
+    const netMins = Math.max(0, grossMins - unpaidMins);
+    const hours = netMins / 60;
+
+    const currentJob = jobs.find(j => j.id === selectedJobId) || jobs[0];
+    const rate = currentJob ? currentJob.rate : 0;
+    const amount = hours * rate;
+
+    const formattedTime = `${Math.floor(netMins / 60)}h${String(netMins % 60).padStart(2, "0")}`;
+    return { formattedTime, amount: amount.toFixed(2) };
+  };
+
+  const metrics = calculateMetrics();
+
   return (
-    <main style={{ maxWidth: "480px", margin: "0 auto", padding: "16px", fontFamily: "sans-serif", paddingBottom: "110px", background: "#f3f4f6", minHeight: "100vh", direction: lang === "ar" ? "rtl" : "ltr" }}>
+    <main style={{ maxWidth: "480px", margin: "0 auto", paddingBottom: "110px", fontFamily: "sans-serif", background: "#f3f4f6", minHeight: "100vh" }}>
       
-      {/* رأس الصفحة وزر التبديل */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-        <div>
-          <div style={{ fontSize: "20px", fontWeight: "bold", color: "#1f2937" }}>{t.greeting} Mina</div>
-          <div style={{ fontSize: "13px", color: "#6b7280", textTransform: "capitalize" }}>{currentDateStr}</div>
+      {/* رأس الصفحة مع شريط التبديل بين اليدوي والمباشر */}
+      <div style={{ background: "#1e3a8a", color: "white", padding: "16px", textAlign: "center", borderBottomLeftRadius: "16px", borderBottomRightRadius: "16px" }}>
+        
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "12px" }}>
+          <div style={{ background: "rgba(255,255,255,0.2)", padding: "4px", borderRadius: "10px", display: "flex", gap: "4px" }}>
+            <button onClick={() => setMode("manual")} style={{ background: mode === "manual" ? "white" : "transparent", color: mode === "manual" ? "#1e3a8a" : "white", border: "none", padding: "6px 12px", borderRadius: "8px", fontSize: "13px", fontWeight: "bold", cursor: "pointer" }}>✍️ Saisie Manuelle</button>
+            <button onClick={() => setMode("live")} style={{ background: mode === "live" ? "white" : "transparent", color: mode === "live" ? "#1e3a8a" : "white", border: "none", padding: "6px 12px", borderRadius: "8px", fontSize: "13px", fontWeight: "bold", cursor: "pointer" }}>⚡ Chronomètre</button>
+          </div>
         </div>
-        <div style={{ background: "#e5e7eb", padding: "4px", borderRadius: "10px", display: "flex", gap: "4px" }}>
-          <button onClick={() => setMode("live")} style={{ background: mode === "live" ? "white" : "transparent", border: "none", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", cursor: "pointer", boxShadow: mode === "live" ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}>⚡ {t.modeLive}</button>
-          <button onClick={() => setMode("manual")} style={{ background: mode === "manual" ? "white" : "transparent", border: "none", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", cursor: "pointer", boxShadow: mode === "manual" ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}>✍️ {t.modeManual}</button>
-        </div>
+
+        {mode === "manual" ? (
+          <div>
+            <input 
+              type="date" 
+              value={selectedDate} 
+              onChange={(e) => handleDateChange(e.target.value)}
+              style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "white", padding: "6px 12px", borderRadius: "6px", fontSize: "16px", fontWeight: "bold", textAlign: "center", marginBottom: "8px" }}
+            />
+            <div style={{ fontSize: "13px", color: "#93c5fd" }}>Total Brut: {metrics.amount} {currencySymbol}</div>
+            <div style={{ fontSize: "28px", fontWeight: "bold", marginTop: "4px" }}>{metrics.formattedTime}</div>
+          </div>
+        ) : (
+          <div style={{ padding: "10px 0" }}>
+            <div style={{ fontSize: "12px", color: "#93c5fd" }}>Chronomètre en direct</div>
+            <div style={{ fontSize: "38px", fontWeight: "bold", fontFamily: "monospace", margin: "10px 0" }}>00:00:00</div>
+            <button onClick={() => setIsClockedIn(!isClockedIn)} style={{ background: isClockedIn ? "#ef4444" : "#10b981", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
+              {isClockedIn ? "Arrêter le shift" : "Démarrer le shift"}
+            </button>
+          </div>
+        )}
       </div>
 
-      {mode === "live" ? (
-        <div style={{ background: "white", borderRadius: "20px", padding: "24px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", textAlign: "center" }}>
-          <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "6px" }}>{t.activeTimer}</div>
-          <div style={{ fontSize: "44px", fontWeight: "bold", color: "#1f2937", fontFamily: "monospace", marginBottom: "20px" }}>
-            {formatSeconds(elapsedSeconds)}
-          </div>
-
-          {!isClockedIn ? (
-            <button onClick={handleStartLive} style={{ width: "100%", background: "#1e3a8a", color: "white", border: "none", padding: "16px", borderRadius: "14px", fontWeight: "bold", fontSize: "16px", cursor: "pointer", boxShadow: "0 4px 6px rgba(30,58,138,0.2)" }}>
-              {t.startShift}
-            </button>
-          ) : (
-            <div>
-              <div style={{ marginBottom: "16px", background: "#f8fafc", padding: "10px", borderRadius: "10px", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px" }}>
-                <input type="checkbox" id="breakPaidCheck" checked={isBreakPaid} onChange={(e) => setIsBreakPaid(e.target.checked)} style={{ width: "16px", height: "16px", cursor: "pointer" }} />
-                <label htmlFor="breakPaidCheck" style={{ fontSize: "13px", fontWeight: "bold", color: "#374151", cursor: "pointer" }}>{t.paidBreak}</label>
-              </div>
-
-              <button onClick={handleToggleBreak} style={{ width: "100%", background: isPaused ? "#10b981" : "#f59e0b", color: "white", border: "none", padding: "14px", borderRadius: "12px", fontWeight: "bold", fontSize: "15px", cursor: "pointer", marginBottom: "12px", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}>
-                {isPaused ? t.resumeBtn : t.pauseBtn}
-              </button>
-              
-              <button onClick={handleFinishLive} style={{ width: "100%", background: "#065f46", color: "white", border: "none", padding: "14px", borderRadius: "12px", fontWeight: "bold", fontSize: "15px", cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}>
-                {t.endShift}
-              </button>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div style={{ background: "white", borderRadius: "20px", padding: "20px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
-          <div style={{ fontWeight: "bold", fontSize: "15px", marginBottom: "14px", color: "#374151" }}>{t.manualTitle}</div>
+      {mode === "manual" && (
+        <div style={{ padding: "16px" }}>
           
-          <div style={{ display: "flex", gap: "12px", marginBottom: "12px" }}>
-            <div style={{ flex: 1 }}>
-              <span style={{ fontSize: "12px", color: "#6b7280" }}>Début (Entry)</span>
-              <input type="time" value={manualStart} onChange={(e) => setManualStart(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px" }} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <span style={{ fontSize: "12px", color: "#6b7280" }}>Fin (Exit)</span>
-              <input type="time" value={manualEnd} onChange={(e) => setManualEnd(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px" }} />
+          <div style={{ background: "white", padding: "12px", borderRadius: "8px", marginBottom: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <label style={{ fontSize: "13px", color: "#6b7280", display: "block", marginBottom: "6px" }}>Lieu de travail (Job):</label>
+            <select 
+              value={selectedJobId} 
+              onChange={(e) => setSelectedJobId(e.target.value)}
+              style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "15px", background: "white" }}
+            >
+              {jobs.length === 0 ? (
+                <option value="">Aucun lieu de travail (Ajouter un job)</option>
+              ) : (
+                jobs.map(job => (
+                  <option key={job.id} value={job.id}>{job.name} ({job.rate} {currencySymbol}/h)</option>
+                ))
+              )}
+            </select>
+          </div>
+
+          <div style={{ background: "white", padding: "12px", borderRadius: "8px", marginBottom: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <div style={{ fontWeight: "bold", marginBottom: "8px", fontSize: "14px", color: "#374151" }}>🕒 Horaires de travail</div>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: "12px", color: "#6b7280" }}>Début</span>
+                <input 
+                  type="time" 
+                  value={startTime} 
+                  onChange={(e) => setStartTime(e.target.value)}
+                  style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "16px", background: "#f0fdf4", textAlign: "center", fontWeight: "bold", color: "#166534" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: "12px", color: "#6b7280" }}>Fin</span>
+                <input 
+                  type="time" 
+                  value={endTime} 
+                  onChange={(e) => setEndTime(e.target.value)}
+                  style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "16px", background: "#fef2f2", textAlign: "center", fontWeight: "bold", color: "#991b1b" }}
+                />
+              </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "12px", marginBottom: "12px" }}>
-            <div style={{ flex: 1 }}>
-              <span style={{ fontSize: "12px", color: "#6b7280" }}>Pause Début</span>
-              <input type="time" value={manualBreakStart} onChange={(e) => setManualBreakStart(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px" }} />
+          <div style={{ background: "white", padding: "12px", borderRadius: "8px", marginBottom: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <span style={{ fontWeight: "bold", fontSize: "14px", color: "#374151" }}>☕ Pauses (max 2)</span>
+              {breaks.length < 2 && (
+                <button 
+                  onClick={() => setBreaks([...breaks, { id: Date.now().toString(), startTime: "", endTime: "", isPaid: false }])}
+                  style={{ background: "#10b981", color: "white", border: "none", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer" }}
+                >
+                  + Ajouter une pause
+                </button>
+              )}
             </div>
-            <div style={{ flex: 1 }}>
-              <span style={{ fontSize: "12px", color: "#6b7280" }}>Pause Fin</span>
-              <input type="time" value={manualBreakEnd} onChange={(e) => setManualBreakEnd(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px" }} />
+
+            {breaks.map((b, index) => (
+              <div key={b.id} style={{ borderTop: "1px solid #e5e7eb", paddingTop: "8px", marginTop: "8px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: "13px", fontWeight: "bold", color: "#4b5563" }}>Pause #{index + 1}</span>
+                  <button 
+                    onClick={() => setBreaks(breaks.filter(item => item.id !== b.id))}
+                    style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer" }}
+                  >
+                    Supprimer
+                  </button>
+                </div>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "6px" }}>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontSize: "11px", color: "#6b7280" }}>Début</span>
+                    <input 
+                      type="time" 
+                      value={b.startTime} 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setBreaks(breaks.map(item => item.id === b.id ? { ...item, startTime: val } : item));
+                      }}
+                      style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px" }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontSize: "11px", color: "#6b7280" }}>Fin</span>
+                    <input 
+                      type="time" 
+                      value={b.endTime} 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setBreaks(breaks.map(item => item.id === b.id ? { ...item, endTime: val } : item));
+                      }}
+                      style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px" }}
+                    />
+                  </div>
+                </div>
+                
+                <div style={{ marginTop: "6px" }}>
+                  <label style={{ fontSize: "13px", display: "flex", alignItems: "center", gap: "4px", color: "#374151", cursor: "pointer" }}>
+                    <input 
+                      type="checkbox" 
+                      checked={b.isPaid} 
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setBreaks(breaks.map(item => item.id === b.id ? { ...item, isPaid: checked } : item));
+                      }}
+                    />
+                    Pause payée
+                  </label>
+                </div>
+              </div>
+            ))}
+
+            <div style={{ marginTop: "12px", borderTop: "1px solid #e5e7eb", paddingTop: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "13px", color: "#4b5563", fontWeight: "bold" }}>Max pauses payées (Total min):</span>
+              <input 
+                type="number" 
+                value={maxPaidMinutes} 
+                onChange={(e) => setMaxPaidMinutes(Number(e.target.value))}
+                style={{ width: "70px", padding: "6px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", textAlign: "center" }}
+              />
             </div>
           </div>
 
-          <div style={{ marginBottom: "16px", background: "#f8fafc", padding: "10px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
-            <input type="checkbox" id="manualPaidCheck" checked={manualIsPaid} onChange={(e) => setManualIsPaid(e.target.checked)} style={{ width: "16px", height: "16px", cursor: "pointer" }} />
-            <label htmlFor="manualPaidCheck" style={{ fontSize: "13px", fontWeight: "bold", color: "#374151", cursor: "pointer" }}>{t.paidBreak}</label>
+          <div style={{ background: "white", padding: "12px", borderRadius: "8px", marginBottom: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <textarea 
+              value={notes} 
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Ajouter une note..."
+              style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px", minHeight: "60px", resize: "none" }}
+            />
           </div>
 
-          {success && <div style={{ background: "#d1fae5", color: "#065f46", padding: "10px", borderRadius: "8px", textAlign: "center", fontSize: "13px", fontWeight: "bold", marginBottom: "12px" }}>{t.successMsg}</div>}
-
-          <button onClick={handleSaveManual} style={{ width: "100%", background: "#1e3a8a", color: "white", border: "none", padding: "14px", borderRadius: "12px", fontWeight: "bold", fontSize: "15px", cursor: "pointer" }}>
-            {t.saveManual}
+          <button 
+            onClick={handleSave}
+            style={{ width: "100%", background: "#1e3a8a", color: "white", border: "none", padding: "14px", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}
+          >
+            {saveSuccess ? "✓ Enregistré avec succès !" : "Enregistrer"}
           </button>
+
         </div>
       )}
 
