@@ -126,13 +126,6 @@ export default function StatsPage() {
     const savedJobs = localStorage.getItem("monshift_jobs");
     if (savedJobs) {
       setJobs(JSON.parse(savedJobs));
-    } else {
-      // جلب تجريبي لو الـ localstorage فيه أماكن عمل مسجلة بأسماء مختلفة
-      const defaultJobs = [
-        { id: "1", name: "Job A", rate: 15, color: "#3b82f6" },
-        { id: "2", name: "Job B", rate: 18, color: "#10b981" }
-      ];
-      setJobs(defaultJobs);
     }
 
     const now = new Date();
@@ -374,7 +367,9 @@ export default function StatsPage() {
     printWindow.document.write(tableHTML);
     printWindow.document.close();
     printWindow.focus();
-    setTimeout => { printWindow.print(); }, 500;
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
   };
 
   const handleShareReport = () => {
@@ -399,7 +394,7 @@ export default function StatsPage() {
 
       <div style={{ padding: "16px" }}>
         
-        {/* تحديد المدة */}
+        {/* صندوق تحديد المدة */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "14px" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#374151", marginBottom: "10px" }}>📅 {t.selectPeriod}</div>
           <div style={{ display: "flex", gap: "10px" }}>
@@ -424,7 +419,7 @@ export default function StatsPage() {
           </div>
         </div>
 
-        {/* فلتر مكان العمل (Job Filter) الواضح والمضمون */}
+        {/* فلتر مكان العمل الواضح جداً */}
         <div style={{ background: "white", padding: "14px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "14px", border: "2px solid #3b82f6" }}>
           <div style={{ fontWeight: "bold", fontSize: "14px", color: "#1e3a8a", marginBottom: "8px" }}>🏢 {t.selectJobFilter}</div>
           <select 
@@ -488,7 +483,6 @@ export default function StatsPage() {
             {t.pdfBtn}
           </button>
           <button 
-            onClick 
             onClick={handleShareReport}
             style={{ flex: 1, background: "#2563eb", color: "white", border: "none", padding: "10px", borderRadius: "8px", fontSize: "13px", fontWeight: "bold", cursor: "pointer" }}
           >
@@ -503,7 +497,7 @@ export default function StatsPage() {
           </div>
 
           {filteredShifts.length === 0 ? (
-            <div style={{ color: "#9ca3af", textAlign: "center", padding: "20px", fontSize: "13px" }}>{t.noData}</div>
+            <div style={{ color: "#9ca3af", textAlign: "center", padding: "20px", fontSize: "13px"}>{t.noData}</div>
           ) : (
             filteredShifts.map(({ date, shift }, index) => {
               const metrics = calculateShiftMetrics(shift);
