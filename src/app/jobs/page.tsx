@@ -104,14 +104,14 @@ export default function JobsPage() {
               </div>
             )}
             {step === 3 && (
-              <div>
-                <h3 style={{ fontSize: "16px", marginBottom: "4px" }}>{t.step3Title}</h3>
+              <div style={{ display: "flex", flexDirection: "column", minHeight: "220px" }}>
+                <h3 style={{ fontSize: "16px", marginBottom: "10px" }}>{t.step3Title}</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "10px", marginBottom: "20px" }}>
                   {COLORS.map((c) => (
                     <button key={c} onClick={() => setColor(c)} style={{ width: "100%", height: "35px", background: c, border: color === c ? "3px solid #000" : "none", borderRadius: "8px", cursor: "pointer" }} />
                   ))}
                 </div>
-                <button onClick={saveJob} style={{ width: "100%", padding: "14px", background: "#1e3a8a", color: "white", border: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "15px" }}>{t.create}</button>
+                <button onClick={saveJob} style={{ width: "100%", padding: "14px", background: "#1e3a8a", color: "white", border: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "15px", marginTop: "auto" }}>{t.create}</button>
               </div>
             )}
           </div>
