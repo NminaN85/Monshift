@@ -19,25 +19,24 @@ export default function JobsPage() {
   const [showModal, setShowModal] = useState(false);
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
-  const [rate, setRate] = useState("12.93");
-  const [color, setColor] = useState("#8b5cf6");
+  const [rate, setRate] = useState("12.00");
+  const [color, setColor] = useState("#3b82f6");
 
   useEffect(() => {
     const saved = localStorage.getItem("monshift_jobs");
     if (saved) {
       setJobs(JSON.parse(saved));
     } else {
-      // وظيفة افتراضية مطابقة للصورة
-      const defaultJobs = [{ id: "1", name: "ATAC", rate: 12.93, color: "#8b5cf6" }];
-      setJobs(defaultJobs);
-      localStorage.setItem("monshift_jobs", JSON.stringify(defaultJobs));
+      // تبدأ القائمة فارغة تماماً بدون أي أمثلة افتراضية
+      setJobs([]);
     }
   }, []);
 
   const saveJob = () => {
+    if (!name.trim()) return;
     const newJob: Job = {
       id: Date.now().toString(),
-      name: name || "وظيفة جديدة",
+      name: name.trim(),
       rate: parseFloat(rate) || 0,
       color,
     };
@@ -47,29 +46,43 @@ export default function JobsPage() {
     setShowModal(false);
     setStep(1);
     setName("");
-    setRate("12.93");
+    setRate("12.00");
+  };
+
+  const deleteJob = (id: string) => {
+    const updated = jobs.filter(j => j.id !== id);
+    setJobs(updated);
+    localStorage.setItem("monshift_jobs", JSON.stringify(updated));
   };
 
   return (
     <main style={{ maxWidth: "480px", margin: "0 auto", padding: "16px", fontFamily: "sans-serif", paddingBottom: "90px", background: "#f3f4f6", minHeight: "100vh" }}>
       <header style={{ background: "#1e3a8a", color: "white", padding: "16px", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <h1 style={{ fontSize: "18px", margin: 0 }}>Emplois</h1>
+        <h1 style={{ fontSize: "18px", margin: 0 }}>Emplois (أماكن العمل)</h1>
         <button onClick={() => setShowModal(true)} style={{ background: "#10b981", color: "white", border: "none", width: "32px", height: "32px", borderRadius: "50%", fontSize: "18px", fontWeight: "bold", cursor: "pointer" }}>+</button>
       </header>
 
       {/* قائمة الأماكن */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        {jobs.map((job) => (
-          <div key={job.id} style={{ background: "white", padding: "14px 16px", borderRadius: "10px", display: "flex", alignItems: "center", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: `6px solid ${job.color}` }}>
-            <div>
-              <div style={{ fontSize: "16px", fontWeight: "bold", color: "#1f2937" }}>{job.name}</div>
-              <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "2px" }}>{job.rate} € / h</div>
+      {jobs.length === 0 ? (
+        <div style={{ background: "white", padding: "30px", borderRadius: "12px", textAlign: "center", color: "#6b7280" }}>
+          <p>لا توجد أماكن عمل مسجلة حتى الآن.</p>
+          <p style={{ fontSize: "13px", marginTop: "8px" }}>اضغط على زر (+) بالأعلى لإضافة مكان عملك الخاص.</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {jobs.map((job) => (
+            <div key={job.id} style={{ background: "white", padding: "14px 16px", borderRadius: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: `6px solid ${job.color}` }}>
+              <div>
+                <div style={{ fontSize: "16px", fontWeight: "bold", color: "#1f2937" }}>{job.name}</div>
+                <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "2px" }}>{job.rate} € / h</div>
+              </div>
+              <button onClick={() => deleteJob(job.id)} style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: "13px", cursor: "pointer" }}>حذف</button>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {/* نافذة إضافة مكان جديد (Modal) مطابقة للصور */}
+      {/* نافذة إضافة مكان جديد (Modal) مطابقة لخطوات التصميم */}
       {showModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100 }}>
           <div style={{ background: "white", width: "100%", maxWidth: "480px", borderTopLeftRadius: "20px", borderTopRightRadius: "20px", padding: "20px", boxSizing: "border-box" }}>
@@ -88,12 +101,12 @@ export default function JobsPage() {
                 <p style={{ fontSize: "12px", color: "#6b7280", marginBottom: "15px" }}>Donnez un nom à cet emploi.</p>
                 <input
                   type="text"
-                  placeholder="nom d'emploi..."
+                  placeholder="اسم مكان العمل..."
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #d1d5db", fontSize: "16px", boxSizing: "border-box", marginBottom: "20px" }}
                 />
-                <button onClick={() => setStep(2)} style={{ width: "100%", padding: "14px", background: "#1e3a8a", color: "white", border: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "15px" }}>Suivant</button>
+                <button onClick={() => { if(name.trim()) setStep(2); }} style={{ width: "100%", padding: "14px", background: "#1e3a8a", color: "white", border: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "15px", opacity: name.trim() ? 1 : 0.5 }}>Suivant</button>
               </div>
             )}
 
