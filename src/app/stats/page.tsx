@@ -14,18 +14,71 @@ interface DayRecord {
 }
 interface Job { id: string; name: string; rate: number; color: string; }
 
+const monthsData: Record<string, string[]> = {
+  fr: ["Jan", "Fév", "Mars", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc"],
+  en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+  ar: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
+};
+
+const texts: Record<string, any> = {
+  fr: {
+    statsTitle: "Statistiques",
+    totalYear: "Revenu Total Annuel",
+    totalHours: "Total Heures",
+    workedDays: "Jours Travaillés",
+    avgRate: "Moyenne / Heure",
+    monthlyEvolution: "Évolution Mensuelle",
+    jobBreakdown: "Répartition par Lieu de travail",
+    noData: "Aucune donnée disponible pour cette année.",
+    hoursLabel: "Heures",
+    daysUnit: "jours"
+  },
+  en: {
+    statsTitle: "Statistics",
+    totalYear: "Total Annual Revenue",
+    totalHours: "Total Hours",
+    workedDays: "Worked Days",
+    avgRate: "Average / Hour",
+    monthlyEvolution: "Monthly Evolution",
+    jobBreakdown: "Job Breakdown",
+    noData: "No data available for this year.",
+    hoursLabel: "Hours",
+    daysUnit: "days"
+  },
+  ar: {
+    statsTitle: "الإحصائيات",
+    totalYear: "إجمالي الدخل السنوي",
+    totalHours: "إجمالي الساعات",
+    workedDays: "الأيام المكتملة",
+    avgRate: "المتوسط / الساعة",
+    monthlyEvolution: "التطور الشهري",
+    jobBreakdown: "التوزيع حسب أماكن العمل",
+    noData: "لا توجد بيانات متاحة لهذا العام.",
+    hoursLabel: "ساعات",
+    daysUnit: "أيام"
+  }
+};
+
 export default function StatsPage() {
+  const [lang, setLang] = useState("fr");
   const [currentYear, setCurrentYear] = useState(2026);
   const [history, setHistory] = useState<Record<string, DayRecord>>({});
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [chartType, setChartType] = useState<"amount" | "hours">("amount");
 
   useEffect(() => {
+    const savedLang = localStorage.getItem("monshift_lang");
+    if (savedLang) setLang(savedLang);
+
     const savedHistory = localStorage.getItem("monshift_history");
     if (savedHistory) setHistory(JSON.parse(savedHistory));
 
     const savedJobs = localStorage.getItem("monshift_jobs");
     if (savedJobs) setJobs(JSON.parse(savedJobs));
   }, []);
+
+  const t = texts[lang] || texts["fr"];
+  const monthsShort = monthsData[lang] || monthsData["fr"];
 
   const calculateDayMetrics = (day: DayRecord) => {
     const [startH, startM] = day.startTime.split(":").map(Number);
@@ -48,7 +101,25 @@ export default function StatsPage() {
     return { netMins, amount, job };
   };
 
-  // حساب إحصائيات العام
+  const getMonthlyData = () => {
+    const months = Array(12).fill(0).map(() => ({ mins: 0, amount: 0 }));
+
+    Object.values(history).forEach(day => {
+      const d = new Date(day.date);
+      if (d.getFullYear() === currentYear) {
+        const mIndex = d.getMonth();
+        const metrics = calculateDayMetrics(day);
+        months[mIndex].mins += metrics.netMins;
+        months[mIndex].amount += metrics.amount;
+      }
+    });
+
+    return months;
+  };
+
+  const monthlyData = getMonthlyData();
+  const maxVal = Math.max(...monthlyData.map(m => chartType === "amount" ? m.amount : m.mins / 60), 10);
+
   const getYearStats = () => {
     let totalMins = 0;
     let totalAmount = 0;
@@ -89,59 +160,104 @@ export default function StatsPage() {
   };
 
   const stats = getYearStats();
+  const totalJobAmount = stats.jobBreakdown.reduce((acc, j) => acc + j.amount, 0) || 1;
 
   return (
-    <main style={{ maxWidth: "480px", margin: "0 auto", paddingBottom: "90px", fontFamily: "sans-serif", background: "#f3f4f6", minHeight: "100vh" }}>
+    <main style={{ maxWidth: "480px", margin: "0 auto", paddingBottom: "90px", fontFamily: "sans-serif", background: "#f3f4f6", minHeight: "100vh", direction: lang === "ar" ? "rtl" : "ltr" }}>
       
-      {/* رأس الصفحة */}
       <header style={{ background: "#1e3a8a", color: "white", padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button onClick={() => setCurrentYear(currentYear - 1)} style={{ background: "transparent", border: "none", color: "white", fontSize: "20px", cursor: "pointer" }}>❮</button>
-        <div style={{ fontSize: "18px", fontWeight: "bold" }}>Statistiques {currentYear}</div>
+        <div style={{ fontSize: "18px", fontWeight: "bold" }}>{t.statsTitle} {currentYear}</div>
         <button onClick={() => setCurrentYear(currentYear + 1)} style={{ background: "transparent", border: "none", color: "white", fontSize: "20px", cursor: "pointer" }}>❯</button>
       </header>
 
       <div style={{ padding: "16px" }}>
         
-        {/* البطاقة الرئيسية للإجماليات */}
         <div style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)", color: "white", padding: "20px", borderRadius: "12px", marginBottom: "16px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
-          <div style={{ fontSize: "13px", opacity: 0.8, marginBottom: "4px" }}>Revenu Total Annuel</div>
+          <div style={{ fontSize: "13px", opacity: 0.8, marginBottom: "4px" }}>{t.totalYear}</div>
           <div style={{ fontSize: "32px", fontWeight: "bold", marginBottom: "12px" }}>{stats.totalAmount} €</div>
           
           <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.2)", paddingTop: "12px" }}>
             <div>
-              <div style={{ fontSize: "12px", opacity: 0.8 }}>Total Heures</div>
+              <div style={{ fontSize: "12px", opacity: 0.8 }}>{t.totalHours}</div>
               <div style={{ fontSize: "16px", fontWeight: "bold" }}>{stats.formattedTime}</div>
             </div>
             <div>
-              <div style={{ fontSize: "12px", opacity: 0.8 }}>Jours Travaillés</div>
-              <div style={{ fontSize: "16px", fontWeight: "bold" }}>{stats.totalDays} jours</div>
+              <div style={{ fontSize: "12px", opacity: 0.8 }}>{t.workedDays}</div>
+              <div style={{ fontSize: "16px", fontWeight: "bold" }}>{stats.totalDays} {t.daysUnit}</div>
             </div>
             <div>
-              <div style={{ fontSize: "12px", opacity: 0.8 }}>Moyenne / Heure</div>
+              <div style={{ fontSize: "12px", opacity: 0.8 }}>{t.avgRate}</div>
               <div style={{ fontSize: "16px", fontWeight: "bold" }}>{stats.avgRate} €/h</div>
             </div>
           </div>
         </div>
 
-        {/* تفاصيل حسب الوظيفة */}
         <div style={{ background: "white", padding: "16px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "16px" }}>
-          <div style={{ fontWeight: "bold", fontSize: "15px", color: "#374151", marginBottom: "12px" }}>Répartition par Lieu de travail</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <div style={{ fontWeight: "bold", fontSize: "15px", color: "#374151" }}>{t.monthlyEvolution}</div>
+            <div style={{ display: "flex", background: "#f3f4f6", padding: "3px", borderRadius: "8px" }}>
+              <button 
+                onClick={() => setChartType("amount")} 
+                style={{ padding: "4px 10px", fontSize: "12px", fontWeight: "bold", border: "none", background: chartType === "amount" ? "#1e3a8a" : "transparent", color: chartType === "amount" ? "white" : "#4b5563", borderRadius: "6px", cursor: "pointer" }}
+              >
+                €
+              </button>
+              <button 
+                onClick={() => setChartType("hours")} 
+                style={{ padding: "4px 10px", fontSize: "12px", fontWeight: "bold", border: "none", background: chartType === "hours" ? "#1e3a8a" : "transparent", color: chartType === "hours" ? "white" : "#4b5563", borderRadius: "6px", cursor: "pointer" }}
+              >
+                {t.hoursLabel}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ height: "160px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "4px", paddingTop: "15px", borderBottom: "1px solid #e5e7eb" }}>
+            {monthlyData.map((data, index) => {
+              const val = chartType === "amount" ? data.amount : data.mins / 60;
+              const heightPercent = maxVal > 0 ? (val / maxVal) * 100 : 0;
+
+              return (
+                <div key={index} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end" }}>
+                  <div title={`${val.toFixed(1)}`} style={{ width: "100%", maxWidth: "18px", height: `${Math.max(heightPercent, 4)}%`, background: val > 0 ? "#3b82f6" : "#e5e7eb", borderTopLeftRadius: "4px", borderTopRightRadius: "4px", transition: "height 0.3s ease" }}></div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "8px" }}>
+            {monthsShort.map((m, index) => (
+              <div key={index} style={{ flex: 1, textAlign: "center", fontSize: "9px", color: "#6b7280" }}>
+                {m}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ background: "white", padding: "16px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "16px" }}>
+          <div style={{ fontWeight: "bold", fontSize: "15px", color: "#374151", marginBottom: "12px" }}>{t.jobBreakdown}</div>
           
           {stats.jobBreakdown.length === 0 ? (
-            <div style={{ color: "#9ca3af", fontSize: "14px", textAlign: "center", padding: "20px" }}>Aucune donnée disponible pour cette année.</div>
+            <div style={{ color: "#9ca3af", fontSize: "14px", textAlign: "center", padding: "20px" }}>{t.noData}</div>
           ) : (
-            stats.jobBreakdown.map((jb, index) => (
-              <div key={index} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: index < stats.jobBreakdown.length - 1 ? "1px solid #e5e7eb" : "none" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: jb.color }}></div>
-                  <div>
-                    <div style={{ fontWeight: "bold", fontSize: "14px", color: "#1f2937" }}>{jb.name}</div>
-                    <div style={{ fontSize: "12px", color: "#6b7280" }}>{Math.floor(jb.mins / 60)}h{String(jb.mins % 60).padStart(2, "0")}</div>
+            stats.jobBreakdown.map((jb, index) => {
+              const percent = (jb.amount / totalJobAmount) * 100;
+              return (
+                <div key={index} style={{ marginBottom: "14px", borderBottom: index < stats.jobBreakdown.length - 1 ? "1px solid #e5e7eb" : "none", paddingBottom: index < stats.jobBreakdown.length - 1 ? "10px" : "0" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: jb.color }}></div>
+                      <span style={{ fontWeight: "bold", fontSize: "14px", color: "#1f2937" }}>{jb.name}</span>
+                    </div>
+                    <div style={{ fontWeight: "bold", fontSize: "14px", color: "#0284c7" }}>{jb.amount.toFixed(2)} € ({percent.toFixed(0)}%)</div>
                   </div>
+                  <div style={{ width: "100%", height: "8px", background: "#f3f4f6", borderRadius: "4px", overflow: "hidden", marginBottom: "4px" }}>
+                    <div style={{ width: `${percent}%`, height: "100%", background: jb.color, borderRadius: "4px", transition: "width 0.3s ease" }}></div>
+                  </div>
+                  <div style={{ fontSize: "11px", color: "#6b7280" }}>{Math.floor(jb.mins / 60)}h{String(jb.mins % 60).padStart(2, "0")} travaillées</div>
                 </div>
-                <div style={{ fontWeight: "bold", fontSize: "15px", color: "#0284c7" }}>{jb.amount.toFixed(2)} €</div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
