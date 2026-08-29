@@ -221,7 +221,7 @@ export default function CalendarPage() {
           {selectedMonth !== null ? (
             (() => {
               const stats = getMonthStats(currentYear, selectedMonth);
-              return `${stats.formattedTime} - ${stats.totalAmount.toFixed(2)} €`;
+              return `${stats.formattedTotalTime} - ${stats.totalAmount.toFixed(2)} €`;
             })()
           ) : (
             `${yearStats.formattedTime} - ${yearStats.totalAmount} €`
