@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import BottomNav from "@/components/BottomNav";
 
 interface BreakItem {
+  id: string;
   startTime: string;
   endTime: string;
   isPaid: boolean;
@@ -12,69 +13,70 @@ interface BreakItem {
 const texts: Record<string, any> = {
   fr: {
     greeting: "Bonjour",
-    enCours: "EN COURS",
-    paused: "EN PAUSE",
-    notStarted: "Prêt à travailler",
-    startShift: "Commencer le shift",
-    pauseBtn: "Pause",
-    resumeBtn: "Reprise",
-    endShiftSlide: "Glissez pour terminer",
-    journal: "JOURNÉE",
-    entree: "Entrée",
-    pauseLabel: "Pause",
-    reprise: "Reprise",
-    sortie: "Sortie",
-    noShiftToday: "Aucun shift actif aujourd'hui",
-    hoursToDo: "+ Heures à effectuer"
+    modeManual: "Saisie Manuelle",
+    modeLive: "Pointeuse Live",
+    startShift: "Démarrer le shift",
+    pauseBtn: "Prendre une Pause",
+    resumeBtn: "Reprendre",
+    endShift: "Terminer le shift",
+    paidBreak: "Pause payée",
+    unpaidBreak: "Pause non payée",
+    manualTitle: "Enregistrement rapide",
+    saveManual: "Enregistrer",
+    successMsg: "Enregistré avec succès !"
   },
   en: {
     greeting: "Hello",
-    enCours: "RUNNING",
-    paused: "PAUSED",
-    notStarted: "Ready to work",
-    startShift: "Start shift",
-    pauseBtn: "Pause",
+    modeManual: "Manual Entry",
+    modeLive: "Live Timer",
+    startShift: "Start Shift",
+    pauseBtn: "Take a Break",
     resumeBtn: "Resume",
-    endShiftSlide: "Slide to finish",
-    journal: "TODAY",
-    entree: "Clock In",
-    pauseLabel: "Break",
-    reprise: "Resume",
-    sortie: "Clock Out",
-    noShiftToday: "No active shift today",
-    hoursToDo: "+ Hours to do"
+    endShift: "Finish Shift",
+    paidBreak: "Paid break",
+    unpaidBreak: "Unpaid break",
+    manualTitle: "Quick Entry",
+    saveManual: "Save",
+    successMsg: "Saved successfully!"
   },
   ar: {
     greeting: "أهلاً بك",
-    enCours: "جاري العمل",
-    paused: "في استراحة",
-    notStarted: "جاهز للبدء",
+    modeManual: "إدخال يدوي",
+    modeLive: "عداد حي",
     startShift: "بدء الشفت",
-    pauseBtn: "استراحة",
-    resumeBtn: "استئناف",
-    endShiftSlide: "اسحب لإنهاء الشفت",
-    journal: "سجل اليوم",
-    entree: "دخول",
-    pauseLabel: "استراحة",
-    reprise: "عودة",
-    sortie: "خروج",
-    noShiftToday: "لا يوجد شفت نشط اليوم",
-    hoursToDo: "+ إضافة ساعات"
+    pauseBtn: "تسجيل استراحة",
+    resumeBtn: "عودة للعمل",
+    endShift: "إنهاء الشفت",
+    paidBreak: "استراحة مدفوعة",
+    unpaidBreak: "استراحة غير مدفوعة",
+    manualTitle: "تسجيل سريع لليوم",
+    saveManual: "حفظ الشفت",
+    successMsg: "تم الحفظ بنجاح!"
   }
 };
 
 export default function MainPage() {
   const [lang, setLang] = useState("fr");
   const [currencySymbol, setCurrencySymbol] = useState("€");
-  const [currentDateStr, setCurrentDateStr] = useState("");
+  const [mode, setMode] = useState<"live" | "manual">("live");
   const [todayKey, setTodayKey] = useState("");
-  
+  const [currentDateStr, setCurrentDateStr] = useState("");
+
+  // حالات العداد الحي (Live)
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [startTime, setStartTime] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  
-  const [timelineEvents, setTimelineEvents] = useState<{ type: string; time: string; label: string }[]>([]);
+  const [liveStartTime, setLiveStartTime] = useState("");
+  const [breaks, setBreaks] = useState<BreakItem[]>([]);
+  const [isBreakPaid, setIsBreakPaid] = useState(false);
+
+  // حالات الإدخال اليدوي (Manual)
+  const [manualStart, setManualStart] = useState("08:00");
+  const [manualEnd, setManualEnd] = useState("16:00");
+  const [manualBreakStart, setManualBreakStart] = useState("");
+  const [manualBreakEnd, setManualBreakEnd] = useState("");
+  const [manualIsPaid, setManualIsPaid] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     const savedLang = localStorage.getItem("monshift_lang");
@@ -98,7 +100,8 @@ export default function MainPage() {
       const dayData = history[key];
       if (dayData.startTime && !dayData.endTime) {
         setIsClockedIn(true);
-        setStartTime(dayData.startTime);
+        setLiveStartTime(dayData.startTime);
+        setBreaks(dayData.breaks || []);
       }
     }
   }, []);
@@ -106,9 +109,7 @@ export default function MainPage() {
   useEffect(() => {
     let interval: any = null;
     if (isClockedIn && !isPaused) {
-      interval = setInterval(() => {
-        setElapsedSeconds(prev => prev + 1);
-      }, 1000);
+      interval = setInterval(() => setElapsedSeconds(prev => prev + 1), 1000);
     } else {
       clearInterval(interval);
     }
@@ -124,39 +125,51 @@ export default function MainPage() {
     return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  const handleStartShift = () => {
+  const handleStartLive = () => {
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    setStartTime(timeStr);
+    setLiveStartTime(timeStr);
     setIsClockedIn(true);
-    setIsPaused(false);
-    setTimelineEvents([{ type: 'entree', time: timeStr, label: t.entree }]);
 
     const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
-    history[todayKey] = {
-      date: todayKey,
-      startTime: timeStr,
-      endTime: "",
-      breaks: [],
-      notes: ""
-    };
+    history[todayKey] = { date: todayKey, startTime: timeStr, endTime: "", breaks: [], notes: "" };
     localStorage.setItem("monshift_history", JSON.stringify(history));
   };
 
-  const handleTogglePause = () => {
+  const handleToggleBreak = () => {
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    
+
     if (!isPaused) {
       setIsPaused(true);
-      setTimelineEvents(prev => [...prev, { type: 'pause', time: timeStr, label: t.pauseLabel }]);
+      // إضافة بداية الاستراحة مع تحديد هل هي مدفوعة أم لا
+      const newBreak: BreakItem = { id: Date.now().toString(), startTime: timeStr, endTime: "", isPaid: isBreakPaid };
+      const updatedBreaks = [...breaks, newBreak];
+      setBreaks(updatedBreaks);
+
+      const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
+      if (history[todayKey]) {
+        history[todayKey].breaks = updatedBreaks;
+        localStorage.setItem("monshift_history", JSON.stringify(history));
+      }
     } else {
       setIsPaused(false);
-      setTimelineEvents(prev => [...prev, { type: 'reprise', time: timeStr, label: t.reprise }]);
+      // تسجيل نهاية الاستراحة الأخيرة
+      const updatedBreaks = [...breaks];
+      if (updatedBreaks.length > 0) {
+        updatedBreaks[updatedBreaks.length - 1].endTime = timeStr;
+      }
+      setBreaks(updatedBreaks);
+
+      const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
+      if (history[todayKey]) {
+        history[todayKey].breaks = updatedBreaks;
+        localStorage.setItem("monshift_history", JSON.stringify(history));
+      }
     }
   };
 
-  const handleFinishShift = () => {
+  const handleFinishLive = () => {
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     
@@ -171,82 +184,106 @@ export default function MainPage() {
     }
   };
 
+  const handleSaveManual = () => {
+    const history = JSON.parse(localStorage.getItem("monshift_history") || "{}");
+    const manualBreaks = manualBreakStart && manualBreakEnd ? [{ id: "1", startTime: manualBreakStart, endTime: manualBreakEnd, isPaid: manualIsPaid }] : [];
+
+    history[todayKey] = {
+      date: todayKey,
+      startTime: manualStart,
+      endTime: manualEnd,
+      breaks: manualBreaks,
+      notes: ""
+    };
+
+    localStorage.setItem("monshift_history", JSON.stringify(history));
+    setSuccess(true);
+    setTimeout(() => setSuccess(false), 2500);
+  };
+
   return (
     <main style={{ maxWidth: "480px", margin: "0 auto", padding: "16px", fontFamily: "sans-serif", paddingBottom: "110px", background: "#f3f4f6", minHeight: "100vh", direction: lang === "ar" ? "rtl" : "ltr" }}>
       
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
         <div>
-          <div style={{ fontSize: "22px", fontWeight: "bold", color: "#1f2937" }}>{t.greeting} Mina.</div>
-          <div style={{ fontSize: "14px", color: "#6b7280", textTransform: "capitalize", marginTop: "2px" }}>{currentDateStr}</div>
+          <div style={{ fontSize: "20px", fontWeight: "bold", color: "#1f2937" }}>{t.greeting} Mina</div>
+          <div style={{ fontSize: "13px", color: "#6b7280", textTransform: "capitalize" }}>{currentDateStr}</div>
         </div>
-        <button onClick={() => window.location.href = "/calendar"} style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "8px 12px", cursor: "pointer", fontSize: "16px" }}>📅</button>
+        {/* أزرار التبديل بين العداد الحي والإدخال اليدوي */}
+        <div style={{ background: "#e5e7eb", padding: "4px", borderRadius: "10px", display: "flex", gap: "4px" }}>
+          <button onClick={() => setMode("live")} style={{ background: mode === "live" ? "white" : "transparent", border: "none", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>⚡ {t.modeLive}</button>
+          <button onClick={() => setMode("manual")} style={{ background: mode === "manual" ? "white" : "transparent", border: "none", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>✍️ {t.modeManual}</button>
+        </div>
       </div>
 
-      <div style={{ background: "#ffffff", borderRadius: "20px", padding: "24px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", marginBottom: "20px", position: "relative", overflow: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-          <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: isClockedIn ? (isPaused ? "#f59e0b" : "#10b981") : "#9ca3af" }}></span>
-          <span style={{ fontSize: "12px", fontWeight: "bold", letterSpacing: "1px", color: isClockedIn ? (isPaused ? "#d97706" : "#059669") : "#6b7280" }}>
-            {isClockedIn ? (isPaused ? t.paused : t.enCours) : t.notStarted}
-          </span>
-        </div>
+      {mode === "live" ? (
+        <div>
+          <div style={{ background: "white", borderRadius: "16px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", marginBottom: "16px", textAlign: "center" }}>
+            <div style={{ fontSize: "38px", fontWeight: "bold", color: "#1f2937", fontFamily: "monospace", marginBottom: "12px" }}>
+              {isClockedIn ? formatSeconds(elapsedSeconds) : "00:00:00"}
+            </div>
 
-        <div style={{ fontSize: "44px", fontWeight: "bold", color: "#1f2937", letterSpacing: "-1px", marginBottom: "16px", fontFamily: "monospace" }}>
-          {isClockedIn ? formatSeconds(elapsedSeconds) : "00:00:00"}
-        </div>
-
-        {!isClockedIn ? (
-          <button 
-            onClick={handleStartShift}
-            style={{ width: "100%", background: "#1e3a8a", color: "white", border: "none", padding: "14px", borderRadius: "14px", fontWeight: "bold", fontSize: "15px", cursor: "pointer", boxShadow: "0 4px 6px rgba(30,58,138,0.2)" }}
-          >
-            {t.startShift}
-          </button>
-        ) : (
-          <button 
-            onClick={() => window.location.href = "/hours"}
-            style={{ background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", padding: "6px 12px", borderRadius: "8px", fontSize: "13px", fontWeight: "bold", cursor: "pointer" }}
-          >
-            {t.hoursToDo}
-          </button>
-        )}
-      </div>
-
-      {isClockedIn && (
-        <div style={{ background: "white", borderRadius: "20px", padding: "20px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", marginBottom: "20px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-            <span style={{ fontSize: "12px", fontWeight: "bold", color: "#6b7280", letterSpacing: "0.5px" }}>{t.journal}</span>
-            <span style={{ fontSize: "11px", background: "#eff6ff", color: "#1d4ed8", padding: "2px 8px", borderRadius: "6px", fontWeight: "bold" }}>Forfait</span>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px", position: "relative", paddingLeft: lang === 'ar' ? '0' : '12px', paddingRight: lang === 'ar' ? '12px' : '0' }}>
-            {timelineEvents.map((ev, idx) => (
-              <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: idx < timelineEvents.length - 1 ? "1px solid #f3f4f6" : "none", paddingBottom: "8px" }}>
-                <div>
-                  <div style={{ fontWeight: "bold", fontSize: "14px", color: "#1f2937" }}>{ev.label}</div>
-                  <div style={{ fontSize: "11px", color: "#6b7280" }}>{ev.type === 'entree' ? 'Début de shift' : 'En cours'}</div>
+            {!isClockedIn ? (
+              <button onClick={handleStartLive} style={{ width: "100%", background: "#1e3a8a", color: "white", border: "none", padding: "14px", borderRadius: "12px", fontWeight: "bold", fontSize: "15px", cursor: "pointer" }}>
+                {t.startShift}
+              </button>
+            ) : (
+              <div>
+                {/* اختيار هل الاستراحة مدفوعة أم لا قبل الضغط */}
+                <div style={{ marginBottom: "12px", display: "flex", justifyContent: "center", gap: "10px" }}>
+                  <label style={{ fontSize: "13px", display: "flex", alignItems: "center", gap: "4px", cursor: "pointer" }}>
+                    <input type="checkbox" checked={isBreakPaid} onChange={(e) => setIsBreakPaid(e.target.checked)} />
+                    {t.paidBreak}
+                  </label>
                 </div>
-                <div style={{ fontSize: "15px", fontWeight: "bold", color: "#374151" }}>{ev.time}</div>
+
+                <button onClick={handleTogglePause} style={{ width: "100%", background: isPaused ? "#10b981" : "#f59e0b", color: "white", border: "none", padding: "12px", borderRadius: "12px", fontWeight: "bold", fontSize: "14px", cursor: "pointer", marginBottom: "10px" }}>
+                  {isPaused ? t.resumeBtn : t.pauseBtn}
+                </button>
+                <button onClick={handleFinishLive} style={{ width: "100%", background: "#065f46", color: "white", border: "none", padding: "12px", borderRadius: "12px", fontWeight: "bold", fontSize: "14px", cursor: "pointer" }}>
+                  {t.endShift}
+                </button>
               </div>
-            ))}
+            )}
           </div>
         </div>
-      )}
+      ) : (
+        <div style={{ background: "white", borderRadius: "16px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", marginBottom: "16px" }}>
+          <div style={{ fontWeight: "bold", fontSize: "14px", marginBottom: "10px", color: "#374151" }}>{t.manualTitle}</div>
+          
+          <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: "11px", color: "#6b7280" }}>Début</span>
+              <input type="time" value={manualStart} onChange={(e) => setManualStart(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db" }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: "11px", color: "#6b7280" }}>Fin</span>
+              <input type="time" value={manualEnd} onChange={(e) => setManualEnd(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db" }} />
+            </div>
+          </div>
 
-      {isClockedIn && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <button 
-            onClick={handleTogglePause}
-            style={{ width: "100%", background: isPaused ? "#059669" : "#3b82f6", color: "white", border: "none", padding: "16px", borderRadius: "16px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 10px rgba(0,0,0,0.1)" }}
-          >
-            {isPaused ? t.resumeBtn : t.pauseBtn}
-          </button>
+          <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: "11px", color: "#6b7280" }}>Pause Début</span>
+              <input type="time" value={manualBreakStart} onChange={(e) => setManualBreakStart(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db" }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: "11px", color: "#6b7280" }}>Pause Fin</span>
+              <input type="time" value={manualBreakEnd} onChange={(e) => setManualBreakEnd(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db" }} />
+            </div>
+          </div>
 
-          <button 
-            onClick={handleFinishShift}
-            style={{ width: "100%", background: "#065f46", color: "white", border: "none", padding: "16px", borderRadius: "16px", fontSize: "15px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", boxShadow: "0 4px 10px rgba(6,95,70,0.2)" }}
-          >
-            <span style={{ background: "rgba(255,255,255,0.2)", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center" }}>❯❯</span>
-            {t.endShiftSlide}
+          <div style={{ marginBottom: "14px" }}>
+            <label style={{ fontSize: "13px", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+              <input type="checkbox" checked={manualIsPaid} onChange={(e) => setManualIsPaid(e.target.checked)} />
+              {t.paidBreak}
+            </label>
+          </div>
+
+          {success && <div style={{ background: "#d1fae5", color: "#065f46", padding: "8px", borderRadius: "6px", textAlign: "center", fontSize: "13px", fontWeight: "bold", marginBottom: "10px" }}>{t.successMsg}</div>}
+
+          <button onClick={handleSaveManual} style={{ width: "100%", background: "#1e3a8a", color: "white", border: "none", padding: "12px", borderRadius: "10px", fontWeight: "bold", fontSize: "14px", cursor: "pointer" }}>
+            {t.saveManual}
           </button>
         </div>
       )}
