@@ -121,6 +121,7 @@ export default function StatsPage() {
 
   const totals = getTotalMetrics();
 
+  // تصدير CSV كجدول بيانات
   const handleExportCSV = () => {
     if (filteredRecords.length === 0) {
       alert("Aucune donnée pour cette période.");
@@ -138,7 +139,7 @@ export default function StatsPage() {
 
     filteredRecords.forEach(day => {
       const metrics = calculateDayMetrics(day);
-      const breaksStr = day.breaks?.map(b => `${b.startTime}-${b.endTime}(${b.isPaid ? 'Payée' : 'Non payée'})`).join(" | ") || "Aucune";
+      const breaksStr = day.breaks?.map(b => `${b.startTime}-${b.endTime}(${b.isPaid ? 'Payée' : 'Non'})`).join(" | ") || "Aucune";
 
       let row = [day.date];
       if (includeJob) row.push(`"${metrics.job.name}"`);
@@ -159,8 +160,82 @@ export default function StatsPage() {
     document.body.removeChild(link);
   };
 
+  // توليد جدول تقرير احترافي وطباعته أو حفظه كـ PDF
   const handlePrintPDF = () => {
-    window.print();
+    if (filteredRecords.length === 0) {
+      alert("Aucune donnée à imprimer.");
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    let tableHTML = `
+      <html>
+        <head>
+          <title>Rapport MonShift - ${startDate} au ${endDate}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; color: #333; direction: ltr; }
+            h2 { color: #1e3a8a; text-align: center; margin-bottom: 5px; }
+            .subtitle { text-align: center; font-size: 14px; color: #666; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 13px; text-align: left; }
+            th { background-color: #1e3a8a; color: white; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            .totals { margin-top: 20px; font-size: 15px; font-weight: bold; background: #f1f5f9; padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; }
+          </style>
+        </head>
+        <body>
+          <h2>MonShift - Rapport de Travail</h2>
+          <div class="subtitle">Période : ${startDate} au ${endDate}</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                ${includeJob ? '<th>Lieu de travail</th>' : ''}
+                ${includeTime ? '<th>Entrée / Sortie</th>' : ''}
+                ${includeBreaks ? '<th>Pauses</th>' : ''}
+                ${includeHours ? '<th>Heures</th>' : ''}
+                ${includeMoney ? '<th>Montant (€)</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
+    filteredRecords.forEach(day => {
+      const metrics = calculateDayMetrics(day);
+      const breaksStr = day.breaks?.map(b => `${b.startTime}-${b.endTime}(${b.isPaid ? 'Payée' : 'Non'})`).join("<br/>") || "-";
+
+      tableHTML += `
+        <tr>
+          <td>${day.date}</td>
+          ${includeJob ? `<td><b>${metrics.job.name}</b></td>` : ''}
+          ${includeTime ? `<td>${day.startTime} - ${day.endTime}</td>` : ''}
+          ${includeBreaks ? `<td>${breaksStr}</td>` : ''}
+          ${includeHours ? `<td><b>${metrics.formattedTime}</b></td>` : ''}
+          ${includeMoney ? `<td><b>${metrics.amount.toFixed(2)} €</b></td>` : ''}
+        </tr>
+      `;
+    });
+
+    tableHTML += `
+            </tbody>
+          </table>
+          <div class="totals">
+            <span>Total Jours : ${totals.daysCount}</span>
+            <span>Total Heures : ${totals.totalHours}</span>
+            <span>Revenu Total : ${totals.totalAmount} €</span>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(tableHTML);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
   };
 
   const handleShareReport = () => {
@@ -252,7 +327,7 @@ export default function StatsPage() {
             onClick={handlePrintPDF}
             style={{ flex: 1, background: "#dc2626", color: "white", border: "none", padding: "10px", borderRadius: "8px", fontSize: "13px", fontWeight: "bold", cursor: "pointer" }}
           >
-            🖨️ PDF / Print
+            🖨️ Tableau PDF
           </button>
           <button 
             onClick={handleShareReport}
