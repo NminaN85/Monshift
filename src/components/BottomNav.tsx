@@ -28,6 +28,7 @@ export default function BottomNav({ active }: { active: "hours" | "jobs" | "cale
       <a href="/" style={{ textDecoration: "none", color: active === "hours" ? "#34d399" : "#93c5fd", fontSize: "12px", textAlign: "center", fontWeight: active === "hours" ? "bold" : "normal" }}>🕒 {t.hours}</a>
       <a href="/jobs" style={{ textDecoration: "none", color: active === "jobs" ? "#34d399" : "#93c5fd", fontSize: "12px", textAlign: "center", fontWeight: active === "jobs" ? "bold" : "normal" }}>🏢 {t.jobs}</a>
       <a href="/calendar" style={{ textDecoration: "none", color: active === "calendar" ? "#34d399" : "#93c5fd", fontSize: "12px", textAlign: "center", fontWeight: active === "calendar" ? "bold" : "normal" }}>📅 {t.calendar}</a>
+      <a href="/stats" style={{ textDecoration: "none", color: active === "stats" ? "#34d399" : "#93c5fd", fontSize: "12px", textAlign: "center", fontWeight: active === "stats" ? "bold" : "normal" }}>📊 {t.stats}</a>
       <a href="/settings" style={{ textDecoration: "none", color: active === "settings" ? "#34d399" : "#93c5fd", fontSize: "12px", textAlign: "center", fontWeight: active === "settings" ? "bold" : "normal" }}>⚙️ {t.settings}</a>
     </nav>
   );
