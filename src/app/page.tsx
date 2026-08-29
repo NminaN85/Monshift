@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import BottomNav from "@/components/BottomNav";
 
-interface BreakItem {
-  id: string;
-  duration: number;
-  isPaid: boolean;
+interface BreakItem { 
+  id: string; 
+  startTime: string; 
+  endTime: string; 
 }
 
 interface DayRecord {
@@ -29,9 +29,13 @@ export default function HeuresPage() {
   const [selectedDate, setSelectedDate] = useState("2026-08-17");
   const [startTime, setStartTime] = useState("07:00");
   const [endTime, setEndTime] = useState("15:00");
+  
+  // تحديث البوزات لتعتمد على وقت البداية والنهاية
   const [breaks, setBreaks] = useState<BreakItem[]>([
-    { id: "1", duration: 30, isPaid: false }
+    { id: "1", startTime: "", endTime: "" }
   ]);
+  
+  const [maxPaidMinutes, setMaxPaidMinutes] = useState<number>(30); // الحد الأقصى المدفوع الإجمالي (مثلا 30 دقيقة)
   const [notes, setNotes] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJobId, setSelectedJobId] = useState("");
@@ -81,10 +85,9 @@ export default function HeuresPage() {
         return;
       }
     }
-    // افتراضي لو اليوم مش مسجل
     setStartTime("07:00");
     setEndTime("15:00");
-    setBreaks([{ id: "1", duration: 30, isPaid: false }]);
+    setBreaks([{ id: "1", startTime: "", endTime: "" }]);
     setNotes("");
   };
 
@@ -106,21 +109,38 @@ export default function HeuresPage() {
     setTimeout(() => setSaveSuccess(false), 2500);
   };
 
-  // حساب الساعات والمبلغ
+  // تحويل الوقت بالدقائق لحساب الفرق
+  const timeToMins = (timeStr: string) => {
+    if (!timeStr) return 0;
+    const [h, m] = timeStr.split(":").map(Number);
+    return h * 60 + m;
+  };
+
+  // حساب الساعات والمبلغ مع تطبيق فكرة البوزات والخصم التلقائي للزيادة
   const calculateMetrics = () => {
-    const [startH, startM] = startTime.split(":").map(Number);
-    const [endH, endM] = endTime.split(":").map(Number);
-    let startMins = startH * 60 + startM;
-    let endMins = endH * 60 + endM;
+    let startMins = timeToMins(startTime);
+    let endMins = timeToMins(endTime);
     if (endMins <= startMins) endMins += 24 * 60;
 
     let grossMins = endMins - startMins;
-    let unpaidMins = 0;
+
+    // حساب إجمالي دقائق الاستراحات المدخلة
+    let totalBreakMins = 0;
     breaks.forEach(b => {
-      if (!b.isPaid) unpaidMins += Number(b.duration || 0);
+      if (b.startTime && b.endTime) {
+        let bStart = timeToMins(b.startTime);
+        let bEnd = timeToMins(b.endTime);
+        if (bEnd <= bStart) bEnd += 24 * 60;
+        const duration = Math.max(0, bEnd - bStart);
+        totalBreakMins += duration;
+      }
     });
 
-    const netMins = Math.max(0, grossMins - unpaidMins);
+    // الاستراحة غير المدفوعة التي يجب خصمها (لو إجمالي البوزات عدى الحد الأقصى المسموح به)
+    const unpaidBreakMins = Math.max(0, totalBreakMins - maxPaidMinutes);
+
+    // صافي الدقائق = إجمالي وقت الشفت - البوزات الزيادة غير المدفوعة
+    const netMins = Math.max(0, grossMins - unpaidBreakMins);
     const hours = netMins / 60;
 
     const currentJob = jobs.find(j => j.id === selectedJobId) || jobs[0];
@@ -128,7 +148,7 @@ export default function HeuresPage() {
     const amount = hours * rate;
 
     const formattedTime = `${Math.floor(netMins / 60)}h${String(netMins % 60).padStart(2, "0")}`;
-    return { formattedTime, amount: amount.toFixed(2), currentJob };
+    return { formattedTime, amount: amount.toFixed(2), totalBreakMins, unpaidBreakMins };
   };
 
   const metrics = calculateMetrics();
@@ -146,6 +166,11 @@ export default function HeuresPage() {
         />
         <div style={{ fontSize: "13px", color: "#93c5fd" }}>Total Brut: {metrics.amount} €</div>
         <div style={{ fontSize: "28px", fontWeight: "bold", marginTop: "4px" }}>{metrics.formattedTime}</div>
+        {metrics.unpaidBreakMins > 0 && (
+          <div style={{ fontSize: "11px", color: "#fca5a5", marginTop: "2px" }}>
+            (Dont {metrics.unpaidBreakMins} min de pause non payée déduites)
+          </div>
+        )}
       </div>
 
       <div style={{ padding: "16px" }}>
@@ -189,13 +214,13 @@ export default function HeuresPage() {
           </div>
         </div>
 
-        {/* الاستراحات (Breaks) */}
+        {/* الاستراحات (Breaks) بوقت البداية والنهاية */}
         <div style={{ background: "white", padding: "12px", borderRadius: "8px", marginBottom: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-            <span style={{ fontWeight: "bold", fontSize: "14px", color: "#374151" }}>☕ Pauses (max 2)</span>
+            <span style={{ fontWeight: "bold", fontSize: "14px", color: "#374151" }}>☕ Pauses (Max 2)</span>
             {breaks.length < 2 && (
               <button 
-                onClick={() => setBreaks([...breaks, { id: Date.now().toString(), duration: 15, isPaid: false }])}
+                onClick={() => setBreaks([...breaks, { id: Date.now().toString(), startTime: "", endTime: "" }])}
                 style={{ background: "#10b981", color: "white", border: "none", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer" }}
               >
                 + Ajouter une pause
@@ -215,30 +240,44 @@ export default function HeuresPage() {
                 </button>
               </div>
               <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "6px" }}>
-                <input 
-                  type="number" 
-                  value={b.duration} 
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    setBreaks(breaks.map(item => item.id === b.id ? { ...item, duration: val } : item));
-                  }}
-                  placeholder="Minutes"
-                  style={{ flex: 1, padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db" }}
-                />
-                <label style={{ fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: "11px", color: "#6b7280" }}>Début</span>
                   <input 
-                    type="checkbox" 
-                    checked={b.isPaid} 
+                    type="time" 
+                    value={b.startTime} 
                     onChange={(e) => {
-                      const checked = e.target.checked;
-                      setBreaks(breaks.map(item => item.id === b.id ? { ...item, isPaid: checked } : item));
+                      const val = e.target.value;
+                      setBreaks(breaks.map(item => item.id === b.id ? { ...item, startTime: val } : item));
                     }}
+                    style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px" }}
                   />
-                  Pause payée
-                </label>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: "11px", color: "#6b7280" }}>Fin</span>
+                  <input 
+                    type="time" 
+                    value={b.endTime} 
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setBreaks(breaks.map(item => item.id === b.id ? { ...item, endTime: val } : item));
+                    }}
+                    style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px" }}
+                  />
+                </div>
               </div>
             </div>
           ))}
+
+          {/* تحديد الحد الأقصى للاستراحة المدفوعة */}
+          <div style={{ marginTop: "12px", borderTop: "1px solid #e5e7eb", paddingTop: "8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "12px", color: "#4b5563" }}>Pause payée max (min):</span>
+            <input 
+              type="number" 
+              value={maxPaidMinutes} 
+              onChange={(e) => setMaxPaidMinutes(Number(e.target.value))}
+              style={{ width: "70px", padding: "6px", borderRadius: "6px", border: "1px solid #d1d5db", textAlign: "center", fontSize: "14px" }}
+            />
+          </div>
         </div>
 
         {/* ملاحظات */}
@@ -251,7 +290,7 @@ export default function HeuresPage() {
           />
         </div>
 
-        {/* زر الحفظ البارز والواضح */}
+        {/* زر الحفظ */}
         <button 
           onClick={handleSave}
           style={{ width: "100%", background: "#1e3a8a", color: "white", border: "none", padding: "14px", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}
