@@ -1,0 +1,27 @@
+{
+  "background_color": "#ffffff",
+  "description": "MonShift est l'application ultime pour suivre vos heures de travail, gérer vos plannings, pauses et calculer vos salaires et heures supplémentaires facilement. Suivi précis des shifts, gestion multi-emplois et interface rapide pour les professionnels et salariés",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "MonShift",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "MonShift",
+  "start_url": "/",
+  "theme_color": "#1e3a8a",
+  "icons": [
+    {
+      "src": "https://monshift-eosin.vercel.app/IMG_9280.jpeg",
+      "type": "image/jpeg",
+      "sizes": "512x512",
+      "isSquare": true,
+      "isPng": false,
+      "isWebp": false,
+      "isJpg": true,
+      "width": 512,
+      "is512x512": true,
+      "is256x256": false,
+      "is192x192": false
+    }
+  ]
+}
