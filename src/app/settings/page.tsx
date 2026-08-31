@@ -169,7 +169,6 @@ const texts: Record<string, any> = {
     currency: "Devise",
     accountSection: "COMPTE",
     myAccount: "Mon compte",
-    emailReports: "Rapports par email",
     info: "Informations",
     searchPlaceholder: "Recherche",
     firstName: "Prénom",
@@ -180,7 +179,7 @@ const texts: Record<string, any> = {
     appDescTitle: "À propos de MonShift",
     appDescText: "MonShift est l'application idéale pour gérer vos heures de travail, plannings et calculs de salaires en toute simplicité.",
     version: "Version",
-    termsText: "Conditions d'utilisation et politique de confidentialité",
+    privacyPolicyBtn: "Politique de confidentialité",
     days: {
       Lundi: "Lundi",
       Mardi: "Mardi",
@@ -198,7 +197,6 @@ const texts: Record<string, any> = {
     currency: "Currency",
     accountSection: "ACCOUNT",
     myAccount: "My account",
-    emailReports: "Email reports",
     info: "Information",
     searchPlaceholder: "Search",
     firstName: "First Name",
@@ -209,7 +207,7 @@ const texts: Record<string, any> = {
     appDescTitle: "About MonShift",
     appDescText: "MonShift is the ideal app to manage your working hours, schedules, and salary calculations with ease.",
     version: "Version",
-    termsText: "Terms of use and privacy policy",
+    privacyPolicyBtn: "Privacy Policy",
     days: {
       Lundi: "Monday",
       Mardi: "Tuesday",
@@ -227,7 +225,6 @@ const texts: Record<string, any> = {
     currency: "العملة",
     accountSection: "الحساب",
     myAccount: "حسابي",
-    emailReports: "التقارير عبر البريد",
     info: "معلومات التطبيق",
     searchPlaceholder: "بحث",
     firstName: "الاسم الأول",
@@ -238,7 +235,7 @@ const texts: Record<string, any> = {
     appDescTitle: "عن تطبيق MonShift",
     appDescText: "MonShift هو التطبيق المثالي لإدارة ساعات العمل، الجداول الزمنية، وحساب الأجور بكل سهولة واحترافية.",
     version: "الإصدار",
-    termsText: "شروط الاستخدام وسياسة الخصوصية",
+    privacyPolicyBtn: "سياسة الخصوصية",
     days: {
       Lundi: "الإثنين",
       Mardi: "الثلاثاء",
@@ -492,7 +489,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* صفحة معلومات التطبيق */}
+      {/* صفحة معلومات التطبيق مع زر سياسة الخصوصية */}
       {currentView === "info" && (
         <div>
           <header style={{ background: "#1e3a8a", color: "white", padding: "16px", display: "flex", alignItems: "center", gap: "12px" }}>
@@ -509,9 +506,13 @@ export default function SettingsPage() {
               <div style={{ fontSize: "13px", color: "#4b5563", lineHeight: "1.5" }}>{t.appDescText}</div>
             </div>
 
-            <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "20px" }}>
-              {t.termsText}
-            </div>
+            {/* زر الانتقال إلى صفحة سياسة الخصوصية */}
+            <a 
+              href="/privacy" 
+              style={{ display: "block", background: "white", color: "#1e3a8a", padding: "14px", borderRadius: "12px", textDecoration: "none", fontWeight: "bold", fontSize: "14px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", textAlign: "center" }}
+            >
+              🔒 {t.privacyPolicyBtn}
+            </a>
           </div>
         </div>
       )}
