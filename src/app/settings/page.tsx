@@ -172,22 +172,24 @@ const texts: Record<string, any> = {
     emailReports: "Rapports par email",
     info: "Informations",
     searchPlaceholder: "Recherche",
-    activeSub: "Inactif",
-    proUpgrade: "Passez à la version pro !",
-    uid: "UID",
+    firstName: "Prénom",
+    lastName: "Nom",
     email: "Email",
-    memberSince: "Membre depuis",
-    subscription: "Abonnement",
-    logout: "Se déconnecter",
-    deleteData: "Supprimer mes données",
-    deleteConfirm: "Action irréversible - toutes vos données seront effacées",
-    contactUs: "Nous contacter",
-    shareApp: "Partager à mes amis",
-    rateApp: "Donner votre avis",
-    terms: "Conditions d'utilisation et politique de confidentialité",
-    proFeature: "Disponible avec l'abonnement Pro",
-    proDesc: "Recevez chaque semaine ou chaque mois votre récap d'heures et de gains.",
-    receiveReports: "Recevoir des rapports par email"
+    saveChanges: "Enregistrer",
+    savedSuccess: "✓ Modifié avec succès !",
+    appDescTitle: "À propos de MonShift",
+    appDescText: "MonShift est l'application idéale pour gérer vos heures de travail, plannings et calculs de salaires en toute simplicité.",
+    version: "Version",
+    termsText: "Conditions d'utilisation et politique de confidentialité",
+    days: {
+      Lundi: "Lundi",
+      Mardi: "Mardi",
+      Mercredi: "Mercredi",
+      Jeudi: "Jeudi",
+      Vendredi: "Vendredi",
+      Samedi: "Samedi",
+      Dimanche: "Dimanche"
+    }
   },
   en: {
     title: "Settings",
@@ -199,22 +201,24 @@ const texts: Record<string, any> = {
     emailReports: "Email reports",
     info: "Information",
     searchPlaceholder: "Search",
-    activeSub: "Inactive",
-    proUpgrade: "Upgrade to Pro version!",
-    uid: "UID",
+    firstName: "First Name",
+    lastName: "Last Name",
     email: "Email",
-    memberSince: "Member since",
-    subscription: "Subscription",
-    logout: "Log out",
-    deleteData: "Delete my data",
-    deleteConfirm: "Irreversible action - all your data will be erased",
-    contactUs: "Contact us",
-    shareApp: "Share with friends",
-    rateApp: "Rate our app",
-    terms: "Terms of use and privacy policy",
-    proFeature: "Available with Pro subscription",
-    proDesc: "Receive your weekly or monthly hours and earnings recap.",
-    receiveReports: "Receive reports by email"
+    saveChanges: "Save",
+    savedSuccess: "✓ Saved successfully!",
+    appDescTitle: "About MonShift",
+    appDescText: "MonShift is the ideal app to manage your working hours, schedules, and salary calculations with ease.",
+    version: "Version",
+    termsText: "Terms of use and privacy policy",
+    days: {
+      Lundi: "Monday",
+      Mardi: "Tuesday",
+      Mercredi: "Wednesday",
+      Jeudi: "Thursday",
+      Vendredi: "Friday",
+      Samedi: "Saturday",
+      Dimanche: "Sunday"
+    }
   },
   ar: {
     title: "الإعدادات",
@@ -226,24 +230,28 @@ const texts: Record<string, any> = {
     emailReports: "التقارير عبر البريد",
     info: "معلومات التطبيق",
     searchPlaceholder: "بحث",
-    activeSub: "غير نشط",
-    proUpgrade: "الترقية إلى النسخة الاحترافية Pro !",
-    uid: "المعرف (UID)",
+    firstName: "الاسم الأول",
+    lastName: "اسم العائلة",
     email: "البريد الإلكتروني",
-    memberSince: "عضو منذ",
-    subscription: "الاشتراك",
-    logout: "تسجيل الخروج",
-    deleteData: "حذف بياناتي",
-    deleteConfirm: "إجراء لا يمكن التراجع عنه - سيتم مسح كافة بياناتك",
-    contactUs: "اتصل بنا",
-    shareApp: "مشاركة مع الأصدقاء",
-    rateApp: "قيم التطبيق",
-    terms: "شروط الاستخدام وسياسة الخصوصية",
-    proFeature: "متاحة مع اشتراك Pro",
-    proDesc: "استلم ملخص ساعاتك وأرباحك أسبوعياً أو شهرياً.",
-    receiveReports: "تلقي التقارير عبر البريد الإلكتروني"
+    saveChanges: "حفظ",
+    savedSuccess: "✓ تم الحفظ بنجاح!",
+    appDescTitle: "عن تطبيق MonShift",
+    appDescText: "MonShift هو التطبيق المثالي لإدارة ساعات العمل، الجداول الزمنية، وحساب الأجور بكل سهولة واحترافية.",
+    version: "الإصدار",
+    termsText: "شروط الاستخدام وسياسة الخصوصية",
+    days: {
+      Lundi: "الإثنين",
+      Mardi: "الثلاثاء",
+      Mercredi: "الأربعاء",
+      Jeudi: "الخميس",
+      Vendredi: "الجمعة",
+      Samedi: "السبت",
+      Dimanche: "الأحد"
+    }
   }
 };
+
+const weekDaysList = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 
 export default function SettingsPage() {
   const [lang, setLang] = useState("fr");
@@ -251,7 +259,12 @@ export default function SettingsPage() {
   const [startDay, setStartDay] = useState("Lundi");
   const [currentView, setCurrentView] = useState<"main" | "account" | "reports" | "info" | "selectDay" | "selectCurrency">("main");
   const [searchQuery, setSearchQuery] = useState("");
-  const [emailReportsEnabled, setEmailReportsEnabled] = useState(false);
+
+  // بيانات الحساب الشخصي
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [accountSaved, setAccountSaved] = useState(false);
 
   useEffect(() => {
     const savedLang = localStorage.getItem("monshift_lang");
@@ -262,6 +275,15 @@ export default function SettingsPage() {
 
     const savedStartDay = localStorage.getItem("monshift_startday");
     if (savedStartDay) setStartDay(savedStartDay);
+
+    const savedFirstName = localStorage.getItem("monshift_firstname");
+    if (savedFirstName) setFirstName(savedFirstName);
+
+    const savedLastName = localStorage.getItem("monshift_lastname");
+    if (savedLastName) setLastName(savedLastName);
+
+    const savedEmail = localStorage.getItem("monshift_email");
+    if (savedEmail) setUserEmail(savedEmail);
   }, []);
 
   const changeLanguage = (newLang: string) => {
@@ -281,6 +303,15 @@ export default function SettingsPage() {
     setStartDay(day);
     localStorage.setItem("monshift_startday", day);
     setCurrentView("main");
+  };
+
+  const handleSaveAccount = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem("monshift_firstname", firstName);
+    localStorage.setItem("monshift_lastname", lastName);
+    localStorage.setItem("monshift_email", userEmail);
+    setAccountSaved(true);
+    setTimeout(() => setAccountSaved(false), 2500);
   };
 
   const t = texts[lang] || texts["fr"];
@@ -313,7 +344,7 @@ export default function SettingsPage() {
               <div onClick={() => setCurrentView("selectDay")} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f3f4f6", cursor: "pointer" }}>
                 <span>📅 {t.startOfWeek}</span>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ color: "#6b7280", fontSize: "14px" }}>{startDay}</span>
+                  <span style={{ color: "#6b7280", fontSize: "14px" }}>{t.days[startDay] || startDay}</span>
                   <span style={{ color: "#9ca3af" }}>{lang === "ar" ? "❮" : "❯"}</span>
                 </div>
               </div>
@@ -332,13 +363,6 @@ export default function SettingsPage() {
                 <span>👤 {t.myAccount}</span>
                 <span style={{ color: "#9ca3af" }}>{lang === "ar" ? "❮" : "❯"}</span>
               </div>
-              <div onClick={() => setCurrentView("reports")} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f3f4f6", cursor: "pointer" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span>✉️ {t.emailReports}</span>
-                  <span style={{ background: "#fef3c7", color: "#d97706", padding: "2px 6px", borderRadius: "4px", fontSize: "10px", fontWeight: "bold" }}>👑 PRO</span>
-                </div>
-                <span style={{ color: "#9ca3af" }}>{lang === "ar" ? "❮" : "❯"}</span>
-              </div>
               <div onClick={() => setCurrentView("info")} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                 <span>ℹ️ {t.info}</span>
                 <span style={{ color: "#9ca3af" }}>{lang === "ar" ? "❮" : "❯"}</span>
@@ -349,7 +373,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* شاشة اختيار العملة مع البحث المطابقة للصورة */}
+      {/* شاشة اختيار العملة مع البحث */}
       {currentView === "selectCurrency" && (
         <div>
           <header style={{ background: "#1e3a8a", color: "white", padding: "16px", display: "flex", alignItems: "center", gap: "12px" }}>
@@ -358,7 +382,6 @@ export default function SettingsPage() {
           </header>
 
           <div style={{ padding: "16px" }}>
-            {/* شريط البحث */}
             <div style={{ background: "white", padding: "10px", borderRadius: "12px", marginBottom: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", display: "flex", alignItems: "center", gap: "8px" }}>
               <span>🔍</span>
               <input 
@@ -370,7 +393,6 @@ export default function SettingsPage() {
               />
             </div>
 
-            {/* قائمة العملات */}
             <div style={{ background: "white", borderRadius: "12px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
               {filteredCurrencies.map((c) => (
                 <div 
@@ -390,7 +412,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* شاشة اختيار بداية الأسبوع */}
+      {/* شاشة اختيار بداية الأسبوع (7 أيام كاملة) */}
       {currentView === "selectDay" && (
         <div>
           <header style={{ background: "#1e3a8a", color: "white", padding: "16px", display: "flex", alignItems: "center", gap: "12px" }}>
@@ -400,13 +422,13 @@ export default function SettingsPage() {
 
           <div style={{ padding: "16px" }}>
             <div style={{ background: "white", borderRadius: "12px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-              {["Lundi", "Dimanche", "Samedi"].map((day) => (
+              {weekDaysList.map((day) => (
                 <div 
                   key={day} 
                   onClick={() => handleSelectStartDay(day)}
                   style={{ padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f3f4f6", cursor: "pointer", background: startDay === day ? "#eff6ff" : "white" }}
                 >
-                  <span style={{ fontWeight: startDay === day ? "bold" : "normal", color: startDay === day ? "#1e3a8a" : "#374151" }}>{day}</span>
+                  <span style={{ fontWeight: startDay === day ? "bold" : "normal", color: startDay === day ? "#1e3a8a" : "#374151" }}>{t.days[day]}</span>
                   {startDay === day && <span style={{ color: "#2563eb", fontWeight: "bold" }}>✓</span>}
                 </div>
               ))}
@@ -415,7 +437,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* صفحة الحساب */}
+      {/* صفحة الحساب الشخصي (First Name, Last Name, Email) */}
       {currentView === "account" && (
         <div>
           <header style={{ background: "#1e3a8a", color: "white", padding: "16px", display: "flex", alignItems: "center", gap: "12px" }}>
@@ -423,30 +445,49 @@ export default function SettingsPage() {
             <div style={{ fontSize: "18px", fontWeight: "bold" }}>{t.myAccount}</div>
           </header>
           <div style={{ padding: "16px" }}>
-            <div style={{ background: "white", padding: "16px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", marginBottom: "16px" }}>
-              <div style={{ fontSize: "12px", color: "#6b7280" }}>{t.uid}</div>
-              <div style={{ fontSize: "14px", fontWeight: "bold", color: "#1f2937", marginBottom: "10px", wordBreak: "break-all" }}>usr_9f8273641029384756</div>
-              <div style={{ fontSize: "12px", color: "#6b7280" }}>{t.email}</div>
-              <div style={{ fontSize: "14px", fontWeight: "bold", color: "#1f2937", marginBottom: "10px" }}>user@example.com</div>
-              <div style={{ fontSize: "12px", color: "#6b7280" }}>{t.subscription}</div>
-              <div style={{ display: "inline-block", background: "#e5e7eb", color: "#374151", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold", marginTop: "4px" }}>{t.activeSub}</div>
-            </div>
-          </div>
-        </div>
-      )}
+            <form onSubmit={handleSaveAccount} style={{ background: "white", padding: "16px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+              
+              <div style={{ marginBottom: "14px" }}>
+                <label style={{ fontSize: "13px", color: "#6b7280", display: "block", marginBottom: "6px", fontWeight: "bold" }}>{t.firstName}</label>
+                <input 
+                  type="text" 
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Ex: John"
+                  style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "15px", outline: "none" }}
+                />
+              </div>
 
-      {/* صفحة التقارير بالإيميل */}
-      {currentView === "reports" && (
-        <div>
-          <header style={{ background: "#1e3a8a", color: "white", padding: "16px", display: "flex", alignItems: "center", gap: "12px" }}>
-            <button onClick={() => setCurrentView("main")} style={{ background: "transparent", border: "none", color: "white", fontSize: "18px", cursor: "pointer" }}>{lang === "ar" ? "❯" : "❮"}</button>
-            <div style={{ fontSize: "18px", fontWeight: "bold" }}>{t.emailReports}</div>
-          </header>
-          <div style={{ padding: "16px" }}>
-            <div style={{ background: "#fef3c7", border: "1px solid #f59e0b", padding: "14px", borderRadius: "12px", marginBottom: "16px" }}>
-              <div style={{ fontWeight: "bold", color: "#b45309", fontSize: "14px", marginBottom: "4px" }}>👑 {t.proFeature}</div>
-              <div style={{ fontSize: "13px", color: "#92400e" }}>{t.proDesc}</div>
-            </div>
+              <div style={{ marginBottom: "14px" }}>
+                <label style={{ fontSize: "13px", color: "#6b7280", display: "block", marginBottom: "6px", fontWeight: "bold" }}>{t.lastName}</label>
+                <input 
+                  type="text" 
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Ex: Doe"
+                  style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "15px", outline: "none" }}
+                />
+              </div>
+
+              <div style={{ marginBottom: "20px" }}>
+                <label style={{ fontSize: "13px", color: "#6b7280", display: "block", marginBottom: "6px", fontWeight: "bold" }}>{t.email}</label>
+                <input 
+                  type="email" 
+                  value={userEmail}
+                  onChange={(e) => setUserEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "15px", outline: "none" }}
+                />
+              </div>
+
+              <button 
+                type="submit"
+                style={{ width: "100%", background: "#1e3a8a", color: "white", border: "none", padding: "12px", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }}
+              >
+                {accountSaved ? t.savedSuccess : t.saveChanges}
+              </button>
+
+            </form>
           </div>
         </div>
       )}
@@ -459,9 +500,18 @@ export default function SettingsPage() {
             <div style={{ fontSize: "18px", fontWeight: "bold" }}>{t.info}</div>
           </header>
           <div style={{ padding: "16px", textAlign: "center" }}>
-            <div style={{ width: "60px", height: "60px", background: "#e5e7eb", borderRadius: "50%", margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>🕒</div>
-            <div style={{ fontWeight: "bold", fontSize: "16px", color: "#1f2937" }}>MonShift</div>
-            <div style={{ fontSize: "12px", color: "#6b7280" }}>v3.09</div>
+            <div style={{ width: "70px", height: "70px", background: "#e5e7eb", borderRadius: "50%", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "28px" }}>🕒</div>
+            <div style={{ fontWeight: "bold", fontSize: "18px", color: "#1f2937", marginBottom: "4px" }}>MonShift</div>
+            <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>{t.version} 3.10</div>
+            
+            <div style={{ background: "white", padding: "16px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", textAlign: lang === "ar" ? "right" : "left", marginBottom: "16px" }}>
+              <div style={{ fontWeight: "bold", fontSize: "14px", color: "#1e3a8a", marginBottom: "6px" }}>{t.appDescTitle}</div>
+              <div style={{ fontSize: "13px", color: "#4b5563", lineHeight: "1.5" }}>{t.appDescText}</div>
+            </div>
+
+            <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "20px" }}>
+              {t.termsText}
+            </div>
           </div>
         </div>
       )}
