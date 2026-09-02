@@ -33,7 +33,7 @@ const translations: Record<string, any> = {
 
 export default function CalendarPage() {
   const [lang, setLang] = useState("fr");
-  const [currentYear, setCurrentYear] = useState(2026);
+const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [history, setHistory] = useState<Record<string, ShiftRecord[] | any>>({});
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -94,7 +94,12 @@ export default function CalendarPage() {
     const netMins = Math.max(0, grossMins - unpaidMins);
     const hours = netMins / 60;
 
-    const job = jobs.find(j => j.id === shift.jobId) || jobs[0];
+    const job = jobs.find(j => j.id === shift.jobId) || jobs[0] || {
+  id: "",
+  name: "Unknown",
+  rate: 0,
+  color: "#9ca3af",
+};
     const rate = job ? job.rate : 0;
     const amount = hours * rate;
 
