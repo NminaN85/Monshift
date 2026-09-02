@@ -121,12 +121,22 @@ export default function StatsPage() {
     if (savedLang) setLang(savedLang);
 
     const savedHistory = localStorage.getItem("monshift_history");
-    if (savedHistory) setHistory(JSON.parse(savedHistory));
+if (savedHistory) {
+  try {
+    setHistory(JSON.parse(savedHistory));
+  } catch {
+    setHistory({});
+  }
+}
 
-    const savedJobs = localStorage.getItem("monshift_jobs");
-    if (savedJobs) {
-      setJobs(JSON.parse(savedJobs));
-    }
+const savedJobs = localStorage.getItem("monshift_jobs");
+if (savedJobs) {
+  try {
+    setJobs(JSON.parse(savedJobs));
+  } catch {
+    setJobs([]);
+  }
+}
 
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
@@ -174,7 +184,12 @@ export default function StatsPage() {
     const netMins = Math.max(0, grossMins - unpaidMins);
     const hours = netMins / 60;
 
-    const job = jobs.find(j => j.id === shift.jobId) || jobs[0];
+const job = jobs.find(j => j.id === shift.jobId) || jobs[0] || {
+  id: "",
+  name: "Unknown",
+  rate: 0,
+  color: "#9ca3af",
+};
     const rate = job ? job.rate : 0;
     const amount = hours * rate;
     const formattedTime = `${Math.floor(netMins / 60)}h${String(netMins % 60).padStart(2, "0")}`;
